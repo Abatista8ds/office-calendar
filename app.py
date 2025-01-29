@@ -6,11 +6,23 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 from datetime import datetime, timedelta
 from google.cloud import datastore
-from functools import wraps
+from functools import wraps, lru_cache
 import calendar
 import json
 from collections import defaultdict
 from calendar import month_name
+import threading
+
+# Adicionar no início do arquivo, junto com as outras importações
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return jsonify({'error': 'Não autorizado'}), 401
+        if session['user']['email'] not in admin_emails:
+            return jsonify({'error': 'Acesso restrito a administradores'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Definir o dicionário meses no escopo global
 meses = {
@@ -58,73 +70,63 @@ with app.app_context():
 # Lista de emails de administradores
 ADMIN_EMAILS = ['andre.batista@wisepirates.com']
 
-def get_user_requirements(user_email):
-    # Buscar requisitos do usuário no Datastore
-    query = client.query(kind='UserRequirements')
-    query.add_filter('email', '=', user_email)
-    results = list(query.fetch(limit=1))
-    
-    if not results:
-        # Requisitos padrão se não encontrar específico
-        return {
-            'required_days': 12,  # Dias mínimos por mês
-            'role': 'employee'    # Papel do usuário
-        }
-    return results[0]
+# Cache com estrutura otimizada
+class ReservationCache:
+    def __init__(self, timeout=300):
+        self.cache = {}
+        self.lock = threading.Lock()
+        self.timeout = timeout
 
-def get_user_reservations_count(user_email, start_date, end_date):
+    def get(self, key):
+        with self.lock:
+            if key in self.cache:
+                data, timestamp = self.cache[key]
+                if timestamp > datetime.now() - timedelta(seconds=self.timeout):
+                    return data
+                del self.cache[key]
+            return None
+
+    def set(self, key, data):
+        with self.lock:
+            self.cache[key] = (data, datetime.now())
+
+# Instanciar cache global
+reservation_cache = ReservationCache()
+
+def get_month_reservations(year, month):
+    """Busca todas as reservas do mês de uma vez"""
+    cache_key = f"month:{year}:{month}"
+    
+    # Tentar pegar do cache primeiro
+    cached_data = reservation_cache.get(cache_key)
+    if cached_data:
+        return cached_data
+    
+    # Query única para o mês todo
+    start_date = f"{year}-{month:02d}-01"
+    end_date = f"{year}-{month:02d}-31"
+    
     query = client.query(kind='Reservation')
-    query.add_filter('user', '=', user_email)
     query.add_filter('status', '=', 'active')
     
-    reservations = list(query.fetch())
-    count = sum(1 for r in reservations 
-               if start_date <= r['date'] <= end_date)
-    return count
-
-# Adicione esta função de decorador
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user' not in session:
-            return redirect('/login')
-        
-        user_email = session['user']['email']
-        query = client.query(kind='UserRequirements')
-        query.add_filter('email', '=' ,user_email)
-        query.add_filter('role', '=', 'admin')
-        
-        if not list(query.fetch(limit=1)):
-            return "Acesso não autorizado", 403
-            
-        return f(*args, **kwargs)
-    return decorated_function
-
-def count_user_days(reservations, user_email, start_date=None, end_date=None):
-    """
-    Conta os dias únicos de reserva para um usuário em um período específico
-    """
-    unique_days = set()
+    # Organizar dados em estrutura otimizada
+    reservations_by_date = defaultdict(list)
+    user_reservations = defaultdict(list)
     
-    for r in reservations:
-        if (r.get('user') == user_email and 
-            r.get('status') == 'active' and 
-            r.get('date')):
-            
-            try:
-                reservation_date = datetime.strptime(r['date'], '%Y-%m-%d')
-                
-                # Se período especificado, verificar se está dentro dele
-                if start_date and end_date:
-                    if start_date <= reservation_date <= end_date:
-                        unique_days.add(r['date'])
-                else:
-                    unique_days.add(r['date'])
-                    
-            except ValueError:
-                continue
+    for reservation in query.fetch():
+        date = reservation.get('date', '')
+        if start_date <= date <= end_date:
+            reservations_by_date[date].append(reservation)
+            user_reservations[reservation['user']].append(reservation)
     
-    return len(unique_days)
+    result = {
+        'by_date': dict(reservations_by_date),
+        'by_user': dict(user_reservations)
+    }
+    
+    # Guardar no cache
+    reservation_cache.set(cache_key, result)
+    return result
 
 @app.route('/')
 def index():
@@ -283,72 +285,73 @@ def google_login():
 
 @app.route('/make-reservation', methods=['POST'])
 def make_reservation():
-    try:
-        if 'user' not in session:
-            return jsonify({'error': 'Não autorizado'}), 401
-            
-        data = request.get_json()
-        date = data.get('date')
-        currently_reserved = data.get('currentlyReserved', False)
-        
-        # Se for cancelamento, processa de forma diferente
-        if currently_reserved:
-            query = client.query(kind='Reservation')
-            query.add_filter('date', '=', date)
-            query.add_filter('user', '=', session['user']['email'])
-            query.add_filter('status', '=', 'active')
-            reservation = list(query.fetch(limit=1))
-            
-            if not reservation:
-                return jsonify({'error': 'Reserva não encontrada'}), 404
-
-            # Permite admin cancelar qualquer reserva ou usuário cancelar própria reserva
-            if session['user']['email'] in ADMIN_EMAILS or reservation[0]['user'] == session['user']['email']:
-                reservation[0].update({
-                    'status': 'cancelled',
-                    'cancelled_at': datetime.now()
-                })
-                client.put(reservation[0])
-                return jsonify({'success': True})
-            return jsonify({'error': 'Não autorizado a cancelar esta reserva'}), 403
-            
-        # Se não for cancelamento, continua com a lógica de criar reserva
-        res_type = data.get('type', 'full')
-        
-        # Verificar se já existe reserva para este dia
+    if 'user' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    data = request.get_json()
+    date = data.get('date')
+    res_type = data.get('type', 'full')
+    
+    # Invalidar cache ao fazer reserva
+    year, month = date.split('-')[:2]
+    cache_key = f"month:{year}:{month}"
+    reservation_cache.cache.pop(cache_key, None)
+    
+    # Se for cancelamento, processa de forma diferente
+    currently_reserved = data.get('currentlyReserved', False)
+    if currently_reserved:
         query = client.query(kind='Reservation')
         query.add_filter('date', '=', date)
+        query.add_filter('user', '=', session['user']['email'])
         query.add_filter('status', '=', 'active')
-        existing_reservations = list(query.fetch())
+        reservation = list(query.fetch(limit=1))
         
-        # Verificar limite de 3 pessoas por dia
-        if len(existing_reservations) >= 3:
-            return jsonify({'error': 'Dia lotado'}), 400
-            
-        # Verificar se usuário já tem reserva neste dia
-        user_reservation = next(
-            (r for r in existing_reservations if r['user'] == session['user']['email']),
-            None
-        )
+        if not reservation:
+            return jsonify({'error': 'Reserva não encontrada'}), 404
+
+        # Permite admin cancelar qualquer reserva ou usuário cancelar própria reserva
+        if session['user']['email'] in ADMIN_EMAILS or reservation[0]['user'] == session['user']['email']:
+            reservation[0].update({
+                'status': 'cancelled',
+                'cancelled_at': datetime.now()
+            })
+            client.put(reservation[0])
+            return jsonify({'success': True})
+        return jsonify({'error': 'Não autorizado a cancelar esta reserva'}), 403
         
-        if user_reservation:
-            return jsonify({'error': 'Você já tem uma reserva neste dia'}), 400
-            
-        # Criar nova reserva
-        reservation = datastore.Entity(client.key('Reservation'))
-        reservation.update({
-            'user': session['user']['email'],
-            'date': date,
-            'type': res_type,
-            'status': 'active',
-            'created_at': datetime.now()
-        })
-        client.put(reservation)
+    # Se não for cancelamento, continua com a lógica de criar reserva
+    
+    # Verificar se já existe reserva para este dia
+    query = client.query(kind='Reservation')
+    query.add_filter('date', '=', date)
+    query.add_filter('status', '=', 'active')
+    existing_reservations = list(query.fetch())
+    
+    # Verificar limite de 3 pessoas por dia
+    if len(existing_reservations) >= 3:
+        return jsonify({'error': 'Dia lotado'}), 400
         
-        return jsonify({'success': True})
+    # Verificar se usuário já tem reserva neste dia
+    user_reservation = next(
+        (r for r in existing_reservations if r['user'] == session['user']['email']),
+        None
+    )
+    
+    if user_reservation:
+        return jsonify({'error': 'Você já tem uma reserva neste dia'}), 400
         
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    # Criar nova reserva
+    reservation = datastore.Entity(client.key('Reservation'))
+    reservation.update({
+        'user': session['user']['email'],
+        'date': date,
+        'type': res_type,
+        'status': 'active',
+        'created_at': datetime.now()
+    })
+    client.put(reservation)
+    
+    return jsonify({'success': True})
 
 @app.route('/cancel_reservation/<reservation_id>', methods=['POST'])
 def cancel_reservation(reservation_id):
@@ -1051,48 +1054,106 @@ def calculate_stats(period='current'):
 
 # Nova rota para atualização das stats via AJAX
 @app.route('/admin/stats')
-def get_stats():
-    try:
-        if 'user' not in session or session['user']['email'] not in ADMIN_EMAILS:
-            return jsonify({'error': 'Não autorizado'}), 401
-            
-        period = request.args.get('period', 'current')
-        stats = calculate_stats(period)
-        return jsonify(stats)
-        
-    except Exception as e:
-        print(f"Erro ao buscar estatísticas: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/month-data')
-def get_month_data():
-    if 'user' not in session:
-        return jsonify({'error': 'Não autorizado'}), 401
-        
-    year = request.args.get('year', type=int)
-    month = request.args.get('month', type=int)
-    
-    if not year or not month:
-        return jsonify({'error': 'Parâmetros inválidos'}), 400
-        
-    # Buscar todas as reservas do mês
+@admin_required
+def admin_stats():
+    # Query para todas as reservas ativas
     query = client.query(kind='Reservation')
     query.add_filter('status', '=', 'active')
     reservations = list(query.fetch())
     
-    # Filtrar reservas do mês solicitado
+    # Pegar mês atual
+    current_month = datetime.now().strftime('%Y-%m')
+    
+    # Processar dados
+    users = set()
+    active_users = set()
+    user_days = defaultdict(float)
+    
+    for res in reservations:
+        user = res.get('user')
+        if not user:
+            continue
+            
+        users.add(user)
+        
+        # Verificar se é do mês atual
+        if res.get('date', '').startswith(current_month):
+            active_users.add(user)
+            user_days[user] += 1.0 if res.get('type') == 'full' else 0.5
+    
+    # Calcular médias
+    total_users = len(users)
+    active_users_count = len(active_users)
+    
+    # Calcular média apenas dos usuários ativos
+    active_days = [days for user, days in user_days.items() if user in active_users]
+    avg_days = sum(active_days) / len(active_days) if active_days else 0
+    
+    return jsonify({
+        'total_users': total_users,
+        'active_users': active_users_count,
+        'avg_days': round(avg_days, 1)  # Arredondar para 1 casa decimal
+    })
+
+@app.route('/month-data')
+def month_data():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+        
+    year = int(request.args.get('year'))
+    month = int(request.args.get('month'))
+    email = session['user']['email']
+    
+    # Query simplificada usando índices existentes
+    query = client.query(kind='Reservation')
+    query.add_filter('status', '=', 'active')
+    
+    all_reservations = list(query.fetch())
+    
+    # Filtrar por mês em memória
+    start_date = f"{year}-{month:02d}-01"
+    end_date = f"{year}-{month:02d}-31"
     month_reservations = [
-        {
-            'date': r['date'],
-            'type': r.get('type', 'full'),
-            'by_admin': r.get('user') in get_admin_emails(),
-            'is_mine': r.get('user') == session['user']['email']  # Adiciona flag para reservas do usuário
-        }
-        for r in reservations
-        if r['date'].startswith(f"{year}-{month:02d}")
+        res for res in all_reservations 
+        if start_date <= res['date'] <= end_date
     ]
     
-    return jsonify(month_reservations)
+    # Processar reservas por data
+    reservations_by_date = {}
+    for res in month_reservations:
+        date = res.get('date')
+        if date not in reservations_by_date:
+            reservations_by_date[date] = []
+        reservations_by_date[date].append(res)
+    
+    # Preparar dados do calendário
+    calendar_data = []
+    for date, reservations in reservations_by_date.items():
+        is_mine = any(r['user'] == email for r in reservations)
+        is_full = len(reservations) >= 3
+        
+        if is_mine or is_full:
+            my_reservation = next((r for r in reservations if r['user'] == email), None)
+            calendar_data.append({
+                'date': date,
+                'is_mine': is_mine,
+                'is_full': is_full,
+                'type': my_reservation['type'] if my_reservation else None
+            })
+    
+    # Calcular total de dias do mês
+    month_days = sum(
+        1 if r['user'] == email and r.get('type') == 'full' else 0.5 
+        for r in month_reservations 
+        if r['user'] == email
+    )
+    
+    # Adicionar informação de meta atingida
+    for data in calendar_data:
+        if data['is_mine']:
+            data['goal_reached'] = month_days >= 10
+    
+    return jsonify(calendar_data)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

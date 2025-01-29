@@ -330,18 +330,25 @@
         .calendar-day {
             position: relative;
             min-height: 60px;
+            transition: background-color 0.2s;
+            padding-bottom: 20px; /* Espaço para o "Office Cheio" */
+        }
+
+        .calendar-day:not(.weekend):hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            cursor: pointer !important;
         }
 
         .calendar-day.reserved {
-            background-color: var(--primary-color);
+            background-color: var(--primary-color) !important;
         }
 
         .calendar-day.reserved.goal-reached {
-            background-color: var(--success-color);
+            background-color: var(--success-color) !important;
         }
 
         .calendar-day.day-full:not(.reserved) {
-            background-color: #333;
+            background-color: #333 !important;
         }
 
         .office-status {
@@ -349,8 +356,13 @@
             color: #888;
             position: absolute;
             bottom: 4px;
-            width: 100%;
+            left: 0;
+            right: 0;
             text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 2px;
         }
 
         .reservation-type {
@@ -413,6 +425,12 @@
             font-size: 0.7rem;
             margin-top: 0.2rem;
             color: rgba(255, 255, 255, 0.7);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #888;
         }
     </style>
 </head>
@@ -668,21 +686,28 @@
             });
         }
 
+        // Cache para dados dos modais
+        const modalCache = new Map();
+        
         function showMonthDetail(email, monthKey) {
+            const modal = document.getElementById('monthDetailModal');
+            const title = document.getElementById('monthDetailTitle');
+            const calendar = document.getElementById('monthCalendarDetail');
+            
+            // Mostrar loading
+            calendar.innerHTML = '<div class="loading">Carregando...</div>';
+            modal.style.display = 'block';
+            
             fetch(`/admin/month-detail?email=${encodeURIComponent(email)}&month=${monthKey}`)
                 .then(response => response.json())
                 .then(data => {
-                    const modal = document.getElementById('monthDetailModal');
-                    const title = document.getElementById('monthDetailTitle');
-                    const calendar = document.getElementById('monthCalendarDetail');
-                    
                     title.textContent = `${data.month_name} - ${email}`;
                     
                     let firstDay = new Date(data.days[0].date).getDay();
                     let calendarHTML = '';
-                    let monthDays = 0;  // Contador total do mês
+                    let monthDays = 0;
                     
-                    // Primeiro, calcular o total de dias do mês
+                    // Calcular total de dias
                     data.days.forEach(day => {
                         if (day.reserved) {
                             monthDays += day.type === 'half' ? 0.5 : 1;
@@ -694,34 +719,31 @@
                         calendarHTML += '<div class="calendar-day" style="visibility: hidden;"></div>';
                     }
                     
-                    // Agora renderizar os dias com a informação da meta já calculada
+                    // Renderizar dias
                     data.days.forEach(day => {
-                        let dayClass = day.class || '';
-                        let dayInfo = '';
+                        const date = new Date(day.date);
+                        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                         
+                        let classes = ['calendar-day'];
+                        if (isWeekend) classes.push('weekend');
                         if (day.reserved) {
-                            dayClass += ' reserved';
-                            // Se o mês atingiu a meta, todos os dias reservados ficam verdes
-                            if (monthDays >= 10) {
-                                dayClass += ' goal-reached';
-                            }
-                        } else if (day.is_full) {
-                            dayClass += ' day-full';
-                            dayInfo = '<span class="office-status">Office Cheio</span>';
+                            classes.push('reserved');
+                            if (monthDays >= 10) classes.push('goal-reached');
                         }
+                        if (day.is_full && !day.reserved) classes.push('day-full');
                         
                         calendarHTML += `
-                            <div class="calendar-day ${dayClass}" 
-                                 onclick="toggleReservation('${email}', '${day.date}', ${day.reserved})">
-                                <span class="day-number">${day.day}</span>
+                            <div class="${classes.join(' ')}" 
+                                 onclick="toggleReservation('${email}', '${day.date}', ${day.reserved})"
+                                 style="cursor: pointer;">
+                                <span class="day-number">${date.getDate()}</span>
                                 ${day.reserved ? `<span class="reservation-type">${day.type === 'half' ? '50%' : '100%'}</span>` : ''}
-                                ${dayInfo}
+                                ${day.is_full ? '<span class="office-status">Office Cheio</span>' : ''}
                             </div>
                         `;
                     });
                     
                     calendar.innerHTML = calendarHTML;
-                    modal.style.display = 'block';
                 });
         }
 
@@ -764,6 +786,20 @@
         // Inicializar com o mês atual
         document.addEventListener('DOMContentLoaded', () => 
             updateStats('current'));
+
+        // Otimizar carregamento das stats
+        function loadStats() {
+            fetch('/admin/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('totalUsers').textContent = data.total_users;
+                    document.getElementById('activeUsers').textContent = data.active_users;
+                    document.getElementById('avgDays').textContent = data.avg_days.toFixed(1);
+                });
+        }
+
+        // Carregar stats ao iniciar
+        document.addEventListener('DOMContentLoaded', loadStats);
     </script>
 </body>
 </html> 
