@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard Administrativo</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #ffffff;
+            --primary-color: #ff4444;
+            --card-bg: #2d2d2d;
+            --hover-color: #ff6666;
+            --success-color: #4CAF50;
+            --warning-color: #FFC107;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #333;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+
+        .btn:hover {
+            background-color: var(--hover-color);
+        }
+
+        .dashboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #444;
+        }
+
+        th {
+            background-color: #333;
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        tr:hover {
+            background-color: #383838;
+        }
+
+        .progress-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .progress-bar {
+            flex-grow: 1;
+            height: 8px;
+            background-color: #444;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        .progress-fill.complete {
+            background-color: var(--success-color);
+        }
+
+        .progress-fill.warning {
+            background-color: var(--warning-color);
+        }
+
+        .percentage {
+            min-width: 45px;
+            text-align: right;
+        }
+
+        .month-details {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .current-month {
+            color: var(--primary-color) !important;
+            font-weight: bold;
+        }
+        
+        td.current-month {
+            background-color: rgba(255, 68, 68, 0.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 500px;
+            margin: 50px auto;
+            position: relative;
+        }
+
+        .admin-list {
+            margin: 1.5rem 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .admin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem;
+            background-color: #333;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .admin-email {
+            color: #fff;
+        }
+
+        .admin-form {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .admin-input {
+            flex-grow: 1;
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #444;
+            background-color: #333;
+            color: #fff;
+        }
+
+        .admin-btn, .delete-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .admin-btn {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .admin-btn:hover {
+            background-color: var(--hover-color);
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            padding: 0.3rem 0.8rem;
+        }
+
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+
+        /* Estilos para as estatísticas */
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card {
+            background-color: var(--card-bg);
+            padding: 1rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 0.9rem;
+            margin: 0;
+            color: #888;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-top: 0.3rem;
+        }
+
+        .divider {
+            border: 0;
+            border-top: 1px solid #333;
+            margin: 1rem 0;
+        }
+
+        .dashboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .dashboard-table th {
+            text-align: left;
+            padding: 0.5rem;
+            color: #888;
+            font-weight: normal;
+        }
+
+        .email-cell {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .progress-cell {
+            padding: 0.5rem;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background-color: #333;
+            border-radius: 2px;
+            margin: 0.3rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        .percentage {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .month-details {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 0.2rem;
+        }
+
+        .complete { background-color: #4CAF50; }
+        .warning { background-color: #FFC107; }
+
+        /* Estilos para o modal de detalhes */
+        .month-detail-content {
+            max-width: 800px;
+            width: 90%;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .month-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.5rem;
+        }
+
+        .calendar-day {
+            position: relative;
+            min-height: 60px;
+        }
+
+        .calendar-day.reserved {
+            background-color: var(--primary-color);
+        }
+
+        .calendar-day.reserved.goal-reached {
+            background-color: var(--success-color);
+        }
+
+        .calendar-day.day-full:not(.reserved) {
+            background-color: #333;
+        }
+
+        .office-status {
+            font-size: 0.7rem;
+            color: #888;
+            position: absolute;
+            bottom: 4px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .reservation-type {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .period-buttons {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .period-btn {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            padding: 0;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .period-btn:hover {
+            color: #fff;
+        }
+
+        .period-btn.active {
+            color: var(--primary-color);
+        }
+
+        .reservation-type-selector {
+            margin: 1rem 0;
+            padding: 0.5rem;
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            background-color: var(--card-bg);
+            border-radius: 4px;
+        }
+        
+        .reservation-type-selector label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #888;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .reservation-type-selector input[type="radio"] {
+            cursor: pointer;
+        }
+        
+        .reservation-type-selector label:hover {
+            color: #fff;
+        }
+        
+        .calendar-day .reservation-type {
+            font-size: 0.7rem;
+            margin-top: 0.2rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Dashboard Administrativo</h1>
+            <div class="header-buttons">
+                <button onclick="openAdminModal()" class="admin-btn">Gerir Admins</button>
+                <a href="/" class="btn">Voltar</a>
+            </div>
+        </div>
+        
+        <!-- Atualizar os botões de período -->
+        <div class="period-selector">
+            <div class="period-buttons">
+                <button class="period-btn" data-period="previous">Mês Anterior</button>
+                <button class="period-btn active" data-period="current">Mês Atual</button>
+                <button class="period-btn" data-period="next">Próximo Mês</button>
+                <button class="period-btn" data-period="year">Anual</button>
+            </div>
+            <span id="selectedPeriod" class="period-label"></span>
+        </div>
+
+        <!-- Stats existentes com id para atualização -->
+        <div class="dashboard-stats">
+            <div class="stat-card">
+                <h3>Usuários</h3>
+                <div class="stat-value" id="statUsers">{{ stats.total_users }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Ocupação</h3>
+                <div class="stat-value" id="statOccupation">{{ stats.avg_occupation }}%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Reservas</h3>
+                <div class="stat-value" id="statReservations">{{ stats.total_reservations }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Meta</h3>
+                <div class="stat-value" id="statGoal">{{ stats.goal_reached }}%</div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Tabela de usuários -->
+        <div class="table-container">
+            <table class="dashboard-table">
+                <thead>
+                    <tr>
+                        <th>Usuário</th>
+                        <th>Total</th>
+                        {% for i in range(3) %}
+                        <th>{{ users[0].months[i].month_name if users|length > 0 else '' }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td class="email-cell">{{ user.email }}</td>
+                        <td>{{ user.year_total }}</td>
+                        {% for month in user.months[:3] %}
+                        <td>
+                            <div class="progress-cell" style="cursor: pointer;" onclick="showMonthDetail('{{ user.email }}', '{{ month.month }}')">
+                                <div class="progress-bar">
+                                    <div class="progress-fill 
+                                        {% if month.percentage >= 100 %}complete
+                                        {% elif month.percentage >= 50 %}warning{% endif %}"
+                                        style="width: {{ month.percentage if month.percentage <= 100 else 100 }}%">
+                                    </div>
+                                </div>
+                                <span class="percentage">{{ month.percentage }}%</span>
+                                <div class="month-details">
+                                    {{ month.completed }}/{{ month.required }}
+                                    ({{ month.full_days }}f, {{ month.half_days }}h)
+                                </div>
+                            </div>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Adicionar modal de gestão de admins -->
+    <div id="adminModal" class="modal">
+        <div class="modal-content">
+            <h3>Gestão de Administradores</h3>
+            <div class="admin-list" id="adminList">
+                <!-- Lista de admins será inserida aqui -->
+            </div>
+            <div class="admin-form">
+                <input type="email" id="newAdminEmail" placeholder="Email do novo admin" class="admin-input">
+                <button onclick="addAdmin()" class="admin-btn">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Adicionar modal de detalhes do mês -->
+    <div id="monthDetailModal" class="modal">
+        <div class="modal-content month-detail-content">
+            <div class="modal-header">
+                <h3 id="monthDetailTitle">Detalhes do Mês</h3>
+                <button onclick="closeMonthDetail()" class="close-btn">&times;</button>
+            </div>
+            <div class="reservation-type-selector">
+                <label>
+                    <input type="radio" name="resType" value="full" checked>
+                    <span>Full Day</span>
+                </label>
+                <label>
+                    <input type="radio" name="resType" value="half">
+                    <span>Half Day</span>
+                </label>
+            </div>
+            <div class="weekdays">
+                <div>Dom</div>
+                <div>Seg</div>
+                <div>Ter</div>
+                <div>Qua</div>
+                <div>Qui</div>
+                <div>Sex</div>
+                <div>Sáb</div>
+            </div>
+            <div class="month-calendar" id="monthCalendarDetail"></div>
+        </div>
+    </div>
+
+    <!-- Adicionar JavaScript -->
+    <script>
+        const adminModal = document.getElementById('adminModal');
+
+        function openAdminModal() {
+            loadAdmins();
+            adminModal.style.display = 'block';
+        }
+
+        function closeAdminModal() {
+            adminModal.style.display = 'none';
+        }
+
+        function loadAdmins() {
+            fetch('/admin/list')
+                .then(response => response.json())
+                .then(data => {
+                    const adminList = document.getElementById('adminList');
+                    adminList.innerHTML = data.admins.map(email => `
+                        <div class="admin-item">
+                            <span class="admin-email">${email}</span>
+                            <button onclick="deleteAdmin('${email}')" class="delete-btn">Remover</button>
+                        </div>
+                    `).join('');
+                });
+        }
+
+        function addAdmin() {
+            const email = document.getElementById('newAdminEmail').value;
+            if (!email) return;
+
+            fetch('/admin/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadAdmins();
+                    document.getElementById('newAdminEmail').value = '';
+                } else {
+                    alert(data.error);
+                }
+            });
+        }
+
+        function deleteAdmin(email) {
+            if (!confirm(`Remover ${email} da lista de administradores?`)) return;
+
+            fetch('/admin/delete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadAdmins();
+                } else {
+                    alert(data.error);
+                }
+            });
+        }
+
+        // Fechar modal ao clicar fora
+        window.onclick = function(event) {
+            if (event.target == adminModal) {
+                closeAdminModal();
+            }
+        }
+
+        function toggleReservation(email, date, currentlyReserved, forceAdd = false) {
+            // Mensagens de confirmação
+            if (!forceAdd) {  // Não pede confirmação quando é segunda tentativa (forceAdd)
+                const message = currentlyReserved ? 
+                    'Tem certeza que deseja cancelar esta reserva?' : 
+                    'Tem certeza que deseja fazer esta reserva?';
+                    
+                if (!confirm(message)) {
+                    return;  // Se não confirmar, não faz nada
+                }
+            }
+
+            const resType = document.querySelector('input[name="resType"]:checked').value;
+            
+            fetch('/admin/toggle-reservation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: email,
+                    date: date,
+                    currentlyReserved: currentlyReserved,
+                    type: resType,
+                    force_add: forceAdd
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.needsConfirmation && !forceAdd) {
+                    if (confirm(data.warning)) {
+                        // Refaz a requisição com force_add = true
+                        toggleReservation(email, date, currentlyReserved, true);
+                    }
+                    return;
+                }
+                
+                if (data.success) {
+                    location.reload();
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                if (error && typeof error === 'string') {
+                    alert('Erro ao processar a reserva: ' + error);
+                }
+            });
+        }
+
+        function showMonthDetail(email, monthKey) {
+            fetch(`/admin/month-detail?email=${encodeURIComponent(email)}&month=${monthKey}`)
+                .then(response => response.json())
+                .then(data => {
+                    const modal = document.getElementById('monthDetailModal');
+                    const title = document.getElementById('monthDetailTitle');
+                    const calendar = document.getElementById('monthCalendarDetail');
+                    
+                    title.textContent = `${data.month_name} - ${email}`;
+                    
+                    let firstDay = new Date(data.days[0].date).getDay();
+                    let calendarHTML = '';
+                    let monthDays = 0;  // Contador total do mês
+                    
+                    // Primeiro, calcular o total de dias do mês
+                    data.days.forEach(day => {
+                        if (day.reserved) {
+                            monthDays += day.type === 'half' ? 0.5 : 1;
+                        }
+                    });
+                    
+                    // Adicionar dias vazios no início
+                    for (let i = 0; i < firstDay; i++) {
+                        calendarHTML += '<div class="calendar-day" style="visibility: hidden;"></div>';
+                    }
+                    
+                    // Agora renderizar os dias com a informação da meta já calculada
+                    data.days.forEach(day => {
+                        let dayClass = day.class || '';
+                        let dayInfo = '';
+                        
+                        if (day.reserved) {
+                            dayClass += ' reserved';
+                            // Se o mês atingiu a meta, todos os dias reservados ficam verdes
+                            if (monthDays >= 10) {
+                                dayClass += ' goal-reached';
+                            }
+                        } else if (day.is_full) {
+                            dayClass += ' day-full';
+                            dayInfo = '<span class="office-status">Office Cheio</span>';
+                        }
+                        
+                        calendarHTML += `
+                            <div class="calendar-day ${dayClass}" 
+                                 onclick="toggleReservation('${email}', '${day.date}', ${day.reserved})">
+                                <span class="day-number">${day.day}</span>
+                                ${day.reserved ? `<span class="reservation-type">${day.type === 'half' ? '50%' : '100%'}</span>` : ''}
+                                ${dayInfo}
+                            </div>
+                        `;
+                    });
+                    
+                    calendar.innerHTML = calendarHTML;
+                    modal.style.display = 'block';
+                });
+        }
+
+        function closeMonthDetail() {
+            document.getElementById('monthDetailModal').style.display = 'none';
+        }
+
+        // Atualizar função para trabalhar com botões
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remover classe active de todos os botões
+                document.querySelectorAll('.period-btn').forEach(b => 
+                    b.classList.remove('active'));
+                
+                // Adicionar classe active ao botão clicado
+                this.classList.add('active');
+                
+                // Atualizar estatísticas
+                updateStats(this.dataset.period);
+            });
+        });
+
+        function updateStats(period) {
+            fetch(`/admin/stats?period=${period}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error('Erro:', data.error);
+                        return;
+                    }
+                    document.getElementById('statUsers').textContent = data.total_users;
+                    document.getElementById('statOccupation').textContent = data.avg_occupation + '%';
+                    document.getElementById('statReservations').textContent = data.total_reservations;
+                    document.getElementById('statGoal').textContent = data.goal_reached + '%';
+                    document.getElementById('selectedPeriod').textContent = data.period_name;
+                })
+                .catch(error => console.error('Erro ao atualizar stats:', error));
+        }
+
+        // Inicializar com o mês atual
+        document.addEventListener('DOMContentLoaded', () => 
+            updateStats('current'));
+    </script>
+</body>
+</html> 

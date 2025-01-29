@@ -1,0 +1,6 @@
+indexes:
+- kind: Reservation
+  properties:
+  - name: status
+  - name: date
+    direction: asc 

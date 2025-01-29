@@ -1,0 +1,7 @@
+Flask==3.0.2
+firebase-admin==6.2.0
+google-cloud-datastore==2.18.0
+python-dotenv==1.0.1
+gunicorn==21.2.0
+google-auth==2.27.0
+google-auth-oauthlib==1.2.0

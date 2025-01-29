@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard | Office</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Adicionar Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ... estilos anteriores ... */
+        
+        .chart-container {
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            height: 300px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .metric-card {
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 0.5rem 0;
+        }
+        
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .occupancy-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.5rem;
+            padding: 1rem;
+        }
+        
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--card-bg);
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .calendar-day .occupancy {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Admin Dashboard</h1>
+            <div>
+                <span>{{ user['email'] }}</span>
+                <a href="/logout" style="margin-left: 1rem; color: var(--primary-color);">Logout</a>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Usuários Ativos</div>
+                <div class="metric-value">{{ total_users }}</div>
+                <div class="metric-trend">+{{ new_users_month }} este mês</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Reservas Ativas</div>
+                <div class="metric-value">{{ total_reservations }}</div>
+                <div class="metric-trend">{{ reservation_trend }}% vs. mês anterior</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Taxa de Ocupação</div>
+                <div class="metric-value">{{ occupancy_rate }}%</div>
+                <div class="metric-trend">Média mensal</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Conformidade</div>
+                <div class="metric-value">{{ compliance_rate }}%</div>
+                <div class="metric-trend">dos usuários atingiram meta</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="occupancyChart"></canvas>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('users')">Usuários</div>
+            <div class="tab" onclick="showTab('reservations')">Reservas</div>
+            <div class="tab" onclick="showTab('analytics')">Análises</div>
+            <div class="tab" onclick="showTab('settings')">Configurações</div>
+        </div>
+
+        <!-- ... conteúdo anterior das tabs ... -->
+
+        <div id="analytics" class="tab-content card">
+            <h2>Análise de Ocupação</h2>
+            <div class="occupancy-calendar">
+                {% for day in occupancy_calendar %}
+                <div class="calendar-day">
+                    <span>{{ day.date }}</span>
+                    <span class="occupancy">{{ day.occupancy }}%</span>
+                    <span>{{ day.total }} reservas</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Gráfico de ocupação
+        const ctx = document.getElementById('occupancyChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {{ dates|tojson }},
+                datasets: [{
+                    label: 'Ocupação Diária',
+                    data: {{ occupancy_data|tojson }},
+                    borderColor: '#ff4444',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#ffffff'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#333'
+                        },
+                        ticks: {
+                            color: '#ffffff'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: '#333'
+                        },
+                        ticks: {
+                            color: '#ffffff'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

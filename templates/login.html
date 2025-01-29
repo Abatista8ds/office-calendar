@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f0f0f0;
+        }
+        form {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        input {
+            margin: 10px 0;
+            padding: 8px;
+            width: 100%;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin: 10px 0;
+        }
+        .google-btn {
+            background-color: #4285f4;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .google-btn img {
+            width: 20px;
+            margin-right: 10px;
+        }
+        .or-divider {
+            text-align: center;
+            margin: 20px 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h2>Login</h2>
+    {% if message %}<p style="color:red">{{ message }}</p>{% endif %}
+    
+    <button onclick="signInWithGoogle()" class="google-btn">
+        <img src="https://www.google.com/favicon.ico" alt="Google logo">
+        Entrar com Google
+    </button>
+
+    <div class="or-divider">- OU -</div>
+
+    <form method="POST">
+        <input type="email" name="email" placeholder="Email" required><br>
+        <input type="password" name="password" placeholder="Password" required><br>
+        <button type="submit">Entrar com Email</button>
+    </form>
+    
+    <a href="/register">Criar nova conta</a>
+
+    <!-- Importar Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+    <script>
+        // Substitua este objeto com o que você copiou do Firebase Console
+        const firebaseConfig = {
+            apiKey: "AIzaSyAH0l0f4QEqR0l-5_ppPJupF_hckpMNiM8",
+            authDomain: "hybrid-449221.firebaseapp.com",
+            projectId: "hybrid-449221",
+            storageBucket: "hybrid-449221.firebasestorage.app",
+            messagingSenderId: "259323238947",
+            appId: "1:259323238947:web:2df0d04d97fca135be6f96",
+            measurementId: "G-ZYXBC8E07P"
+            };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        function signInWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            
+            firebase.auth().signInWithPopup(provider)
+                .then((result) => {
+                    // Pegar o token ID
+                    return result.user.getIdToken();
+                })
+                .then((idToken) => {
+                    // Enviar o token para o backend
+                    return fetch('/google-login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ token: idToken })
+                    });
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = '/';
+                    } else {
+                        throw new Error(data.error || 'Login failed');
+                    }
+                })
+                .catch((error) => {
+                    console.error("Erro no login:", error);
+                    alert("Erro ao fazer login com Google: " + error.message);
+                });
+        }
+    </script>
+</body>
+</html>

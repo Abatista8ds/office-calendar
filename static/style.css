@@ -1,0 +1,75 @@
+:root {
+    --primary-color: #e74c3c;
+    --primary-color-hover: #c0392b;
+    --card-bg: #333;
+    --bg-color: #1a1a1a;
+    --text-color: #fff;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.header {
+    background-color: var(--card-bg);
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.days-info {
+    color: #888;
+}
+
+.admin-link, .logout-btn {
+    color: var(--text-color);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+}
+
+.admin-link {
+    background-color: var(--primary-color);
+}
+
+.logout-btn {
+    background-color: #666;
+}
+
+.container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.month-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.nav-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+} 

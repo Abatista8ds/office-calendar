@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reservas | Office</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="header">
+        <div class="logo">Reservas | Office</div>
+        <div class="user-info">
+            <span>{{ email }}</span>
+            <span class="days-info">{{ days_this_month }}</span>
+            {% if is_admin %}
+            <a href="/admin/dashboard" class="admin-link">Dashboard Admin</a>
+            {% endif %}
+            <a href="/logout" class="logout-btn">Sair</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="month-header">
+            <button class="nav-btn" onclick="previousMonth()">&lt;</button>
+            <h2 id="monthDisplay"></h2>
+            <button class="nav-btn" onclick="nextMonth()">&gt;</button>
+        </div>
+
+        <div class="calendar">
+            <div class="weekdays">
+                <div>Dom</div>
+                <div>Seg</div>
+                <div>Ter</div>
+                <div>Qua</div>
+                <div>Qui</div>
+                <div>Sex</div>
+                <div>Sáb</div>
+            </div>
+            <div class="days" id="daysContainer">
+                <!-- Dias serão inseridos via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Reserva -->
+    <div id="reservationModal" class="modal">
+        <div class="modal-content">
+            <h3>Reserva</h3>
+            <div class="reservation-options">
+                <button onclick="makeReservation('full')">Dia Inteiro</button>
+                <button onclick="makeReservation('half')">Meio Período</button>
+                <button onclick="closeModal()" class="cancel-btn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .month-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .month-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+
+        .calendar {
+            background-color: var(--bg-color);
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: #666;
+        }
+
+        .weekdays div {
+            text-align: center;
+            padding: 10px;
+        }
+
+        .days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .calendar-day {
+            background-color: var(--card-bg);
+            border-radius: 4px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.9rem;
+            position: relative;
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            min-height: 60px;
+        }
+
+        .calendar-day:hover:not(.weekend):not(.reserved) {
+            background-color: var(--primary-color);
+        }
+
+        .calendar-day.weekend {
+            background-color: #2a2a2a;
+            cursor: not-allowed;
+        }
+
+        .calendar-day.reserved {
+            background-color: var(--primary-color) !important;
+            cursor: pointer;
+        }
+
+        .calendar-day.reserved.by-admin {
+            background-color: #27ae60;  /* Verde mais escuro para reservas de admin */
+        }
+
+        .calendar-day.day-full:not(.reserved) {
+            background-color: #333 !important;
+            cursor: not-allowed;
+        }
+
+        .day-number {
+            font-size: 1.1rem;
+        }
+
+        .reservation-type {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .days-info {
+            color: #666;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .calendar-day.goal-reached {
+            background-color: #2ecc71 !important;
+        }
+
+        .calendar-day.goal-reached.by-admin {
+            background-color: #27ae60 !important;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+            text-align: center;
+        }
+
+        .reservation-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .reservation-options button {
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: var(--primary-color);
+            color: white;
+            transition: background-color 0.3s;
+        }
+
+        .reservation-options button:hover {
+            background-color: var(--primary-color-hover);
+        }
+
+        .reservation-options .cancel-btn {
+            background-color: #666;
+        }
+
+        .reservation-options .cancel-btn:hover {
+            background-color: #555;
+        }
+
+        .office-status {
+            font-size: 0.7rem;
+            color: #888;
+            position: absolute;
+            bottom: 4px;
+            width: 100%;
+            text-align: center;
+        }
+    </style>
+
+    <script>
+        let currentDate = new Date();
+        let selectedDate = null;
+        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+        ];
+
+        function loadMonth(date) {
+            const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+            const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+            
+            document.getElementById('monthDisplay').textContent = 
+                `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+
+            const daysContainer = document.getElementById('daysContainer');
+            daysContainer.innerHTML = '';
+
+            // Adicionar espaços vazios para os dias antes do primeiro dia do mês
+            for (let i = 0; i < firstDay.getDay(); i++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                daysContainer.appendChild(dayDiv);
+            }
+
+            // Adicionar os dias do mês
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                
+                const currentDayDate = new Date(date.getFullYear(), date.getMonth(), day);
+                const isWeekend = currentDayDate.getDay() === 0 || currentDayDate.getDay() === 6;
+                
+                if (isWeekend) {
+                    dayDiv.classList.add('weekend');
+                }
+
+                const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                if (!isWeekend) {
+                    dayDiv.onclick = () => showReservationModal(dateStr, false);
+                }
+
+                // Adicionar número do dia
+                const dayNumber = document.createElement('span');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = day;
+                dayDiv.appendChild(dayNumber);
+
+                // Adicionar span para o tipo de reserva
+                const typeSpan = document.createElement('span');
+                typeSpan.className = 'reservation-type';
+                dayDiv.appendChild(typeSpan);
+
+                daysContainer.appendChild(dayDiv);
+            }
+
+            // Buscar reservas do mês
+            fetch(`/month-data?year=${date.getFullYear()}&month=${date.getMonth() + 1}`)
+                .then(response => response.json())
+                .then(reservations => {
+                    let monthDays = 0;
+                    
+                    // Primeiro, calcular total de dias do mês
+                    reservations.forEach(res => {
+                        if (res.is_mine) {
+                            monthDays += res.type === 'half' ? 0.5 : 1;
+                        }
+                    });
+
+                    // Depois, aplicar as classes com a informação da meta
+                    reservations.forEach(res => {
+                        const day = parseInt(res.date.split('-')[2]);
+                        const dayDiv = daysContainer.children[firstDay.getDay() + day - 1];
+                        if (dayDiv) {
+                            if (res.is_mine) {
+                                dayDiv.classList.add('reserved');
+                                // Só adiciona goal-reached se atingiu a meta do mês
+                                if (monthDays >= 10) {
+                                    dayDiv.classList.add('goal-reached');
+                                }
+                                dayDiv.onclick = () => showReservationModal(res.date, true);
+                            } else if (res.is_full) {
+                                dayDiv.classList.add('day-full');
+                                const statusSpan = document.createElement('span');
+                                statusSpan.className = 'office-status';
+                                statusSpan.textContent = 'Office Cheio';
+                                dayDiv.appendChild(statusSpan);
+                            }
+                            
+                            // Adicionar tipo de reserva
+                            if (res.is_mine) {
+                                const typeSpan = dayDiv.querySelector('.reservation-type');
+                                if (typeSpan) {
+                                    typeSpan.textContent = res.type === 'half' ? '50%' : '100%';
+                                }
+                            }
+                        }
+                    });
+
+                    // Atualizar contador de dias
+                    const daysInfo = document.querySelector('.days-info');
+                    if (daysInfo) {
+                        daysInfo.textContent = `${monthDays}/10 dias este mês`;
+                    }
+                });
+        }
+
+        function showReservationModal(date, isReserved, isAdminReservation, isMine) {
+            selectedDate = date;
+            const modal = document.getElementById('reservationModal');
+            const content = modal.querySelector('.modal-content');
+            const isAdmin = '{{ is_admin|tojson }}' === 'true';
+            
+            if (isReserved) {
+                if (isMine || isAdmin) {
+                    content.innerHTML = `
+                        <h3>Cancelar Reserva</h3>
+                        <div class="reservation-options">
+                            <button onclick="cancelReservation('${date}')" style="background-color: #e74c3c">Cancelar Reserva</button>
+                            <button onclick="closeModal()" class="cancel-btn">Voltar</button>
+                        </div>
+                    `;
+                } else {
+                    content.innerHTML = `
+                        <h3>Dia Reservado</h3>
+                        <div class="reservation-options">
+                            <button onclick="closeModal()" class="cancel-btn">Voltar</button>
+                        </div>
+                    `;
+                }
+            } else {
+                content.innerHTML = `
+                    <h3>Reserva</h3>
+                    <div class="reservation-options">
+                        <button onclick="makeReservation('full')">Dia Inteiro</button>
+                        <button onclick="makeReservation('half')">Meio Período</button>
+                        <button onclick="closeModal()" class="cancel-btn">Cancelar</button>
+                    </div>
+                `;
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('reservationModal').style.display = 'none';
+            selectedDate = null;
+        }
+
+        function makeReservation(type) {
+            if (!selectedDate) return;
+            
+            fetch('/make-reservation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    date: selectedDate,
+                    type: type,
+                    currentlyReserved: false
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => Promise.reject(data.error));
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    closeModal();
+                    // Se estiver no modal do admin (verificando pela URL)
+                    if (window.location.pathname.includes('/admin')) {
+                        // Apenas fecha o modal e atualiza a página pai
+                        window.parent.location.reload();
+                    } else {
+                        // Comportamento normal para o calendário do usuário
+                        loadMonth(currentDate, false);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert(typeof error === 'string' ? error : 'Erro ao processar a reserva');
+            });
+        }
+
+        function cancelReservation(date) {
+            fetch('/make-reservation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    date: date,
+                    currentlyReserved: true
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => Promise.reject(data.error));
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    closeModal();
+                    // Se estiver no modal do admin
+                    if (window.location.pathname.includes('/admin')) {
+                        // Apenas fecha o modal e atualiza a página pai
+                        window.parent.location.reload();
+                    } else {
+                        // Comportamento normal para o calendário do usuário
+                        loadMonth(currentDate, false);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert(typeof error === 'string' ? error : 'Erro ao cancelar reserva');
+            });
+        }
+
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            loadMonth(currentDate, true);  // Mostra erros na navegação manual
+        }
+
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            loadMonth(currentDate, true);  // Mostra erros na navegação manual
+        }
+
+        // Carrega o mês inicial mostrando erros
+        loadMonth(currentDate, true);
+
+        // Fechar modal se clicar fora
+        window.onclick = function(event) {
+            const modal = document.getElementById('reservationModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
