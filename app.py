@@ -558,85 +558,47 @@ def create_admin(email):
     client.put(entity)
 
 @app.route('/calendar-data')
-def calendar_data():
+def get_calendar_data():
     try:
-        if 'user' not in session:
-            return jsonify({'error': 'Não autorizado'}), 401
-
-        month = int(request.args.get('month', datetime.now().month))
-        year = int(request.args.get('year', datetime.now().year))
+        month = request.args.get('month', datetime.now().strftime('%Y-%m'))
+        year, month = map(int, month.split('-'))
+        last_day = calendar.monthrange(year, int(month))[1]
         
-        cal = calendar.monthcalendar(year, month)
-        
-        start_date = datetime(year, month, 1).strftime('%Y-%m-%d')
-        last_day = calendar.monthrange(year, month)[1]
-        end_date = datetime(year, month, last_day).strftime('%Y-%m-%d')
-        
+        # Buscar todas as reservas do mês
         query = client.query(kind='Reservation')
-        query.add_filter('user', '=', session['user']['email'])
+        query.add_filter('date', '>=', f"{year}-{month:02d}-01")
+        query.add_filter('date', '<=', f"{year}-{month:02d}-{last_day:02d}")
+        query.add_filter('status', '=', 'active')
+        month_reservations = list(query.fetch())
         
-        reservations = list(query.fetch())
-        
-        active_reservations = [
-            res for res in reservations 
-            if res.get('status') == 'active' 
-            and start_date <= res['date'] <= end_date
-        ]
-        
-        reservations_by_date = {}
-        total_days = 0
-        for res in active_reservations:
-            date = res['date']
-            reservation_type = res.get('type', 'full')
-            days_value = 1 if reservation_type == 'full' else 0.5
+        calendar_data = {}
+        for day in range(1, last_day + 1):
+            date_str = f"{year}-{month:02d}-{day:02d}"
             
-            if date not in reservations_by_date:
-                reservations_by_date[date] = {
-                    'percentage': 0,
-                    'count': 0,
-                    'id': str(res.key.id)
-                }
+            # Buscar reservas para este dia
+            day_reservations = [r for r in month_reservations if r['date'] == date_str]
             
-            reservations_by_date[date]['percentage'] = 100 if reservation_type == 'full' else 50
-            reservations_by_date[date]['count'] += days_value
-            total_days += days_value
-        
-        calendar_weeks = []
-        goal_reached = total_days >= 10
-        
-        for week in cal:
-            week_days = []
-            for weekday, day in enumerate(week):
-                if day == 0:
-                    week_days.append({'empty': True})
-                else:
-                    date = datetime(year, month, day)
-                    is_weekend = date.weekday() >= 5  # 5 = Sábado, 6 = Domingo
-                    date_str = date.strftime('%Y-%m-%d')
-                    reservation_info = reservations_by_date.get(date_str, {})
-                    week_days.append({
-                        'empty': False,
-                        'date': date_str,
-                        'day': day,
-                        'is_weekend': is_weekend,
-                        'has_reservation': date_str in reservations_by_date,
-                        'percentage': reservation_info.get('percentage', 0),
-                        'goal_reached': goal_reached and date_str in reservations_by_date,
-                        'reservation_id': reservation_info.get('id', '')
-                    })
-            calendar_weeks.append(week_days)
-        
-        month_name = f"{meses[month]} {year}"
-        
-        return jsonify({
-            'calendar_weeks': calendar_weeks,
-            'month_name': month_name,
-            'days_reserved': total_days,
-            'required_days': 10
-        })
-        
+            # Calcular contagem total (full = 1, half = 0.5)
+            count = sum(1.0 if r.get('type') == 'full' else 0.5 for r in day_reservations)
+            
+            # Verificar se o usuário atual tem reserva neste dia
+            user_reservation = next(
+                (r for r in day_reservations if r['user'] == session.get('user')['email']), 
+                None
+            )
+            
+            print(f"Data: {date_str}, Count: {count}, Reservas: {len(day_reservations)}") # Debug
+            
+            calendar_data[date_str] = {
+                'reserved': bool(user_reservation),
+                'type': user_reservation.get('type') if user_reservation else None,
+                'count': count,
+                'total_reservations': len(day_reservations)  # Adicional para debug
+            }
+            
+        return jsonify(calendar_data)
     except Exception as e:
-        print(f"Erro ao buscar dados do calendário: {e}")
+        print(f"Erro: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/availability/<date>')
