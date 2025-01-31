@@ -1155,5 +1155,26 @@ def month_data():
     
     return jsonify(calendar_data)
 
+@app.route('/office-state/<date>')
+def get_office_state(date):
+    try:
+        # Buscar todas as reservas para a data
+        query = client.query(kind='Reservation')
+        query.add_filter('date', '=', date)
+        query.add_filter('status', '=', 'active')
+        reservations = list(query.fetch())
+        
+        # Calcular ocupação total (full day = 1, half day = 0.5)
+        total_count = sum(1.0 if r.get('type') == 'full' else 0.5 for r in reservations)
+        
+        return jsonify({
+            'count': total_count,
+            'total_spots': 3,
+            'is_full': total_count >= 3
+        })
+    except Exception as e:
+        print(f"Erro ao buscar estado do office: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

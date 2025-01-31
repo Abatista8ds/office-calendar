@@ -5,6 +5,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div id="toast" class="toast" style="display: none;"></div>
+
     <div class="header">
         <div class="logo">Reservas | Office</div>
         <div class="user-info">
@@ -43,12 +45,8 @@
     <!-- Modal de Reserva -->
     <div id="reservationModal" class="modal">
         <div class="modal-content">
-            <h3>Reserva</h3>
-            <div class="reservation-options">
-                <button onclick="makeReservation('full')">Dia Inteiro</button>
-                <button onclick="makeReservation('half')">Meio Período</button>
-                <button onclick="closeModal()" class="cancel-btn">Cancelar</button>
-            </div>
+            <h3>Reserva para <span id="selectedDateDisplay"></span></h3>
+            <div class="reservation-options"></div>
         </div>
     </div>
 
@@ -171,21 +169,22 @@
         .modal {
             display: none;
             position: fixed;
-            top: 0;
+            z-index: 1000;
             left: 0;
+            top: 0;
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
         }
 
         .modal-content {
-            background-color: var(--card-bg);
+            background-color: var(--bg-color);
             margin: 15% auto;
-            padding: 20px;
-            border-radius: 8px;
-            width: 300px;
-            text-align: center;
+            padding: 24px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .reservation-options {
@@ -196,17 +195,19 @@
         }
 
         .reservation-options button {
-            padding: 10px;
+            padding: 12px;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
+            font-size: 1em;
             cursor: pointer;
-            background-color: var(--primary-color);
-            color: white;
-            transition: background-color 0.3s;
+            transition: all 0.2s ease;
+            width: 100%;
+            font-weight: 500;
+            margin: 4px 0;
         }
 
         .reservation-options button:hover {
-            background-color: var(--primary-color-hover);
+            opacity: 0.9;
         }
 
         .reservation-options .cancel-btn {
@@ -225,6 +226,81 @@
             width: 100%;
             text-align: center;
         }
+
+        .office-state {
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .meter {
+            height: 8px;
+            background-color: var(--bg-secondary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        .occupancy-text {
+            font-size: 0.9em;
+            color: var(--text-color);
+            opacity: 0.8;
+        }
+
+        .full-day-button,
+        .half-day-button,
+        .back-button {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            font-weight: 500;
+            margin: 4px 0;
+        }
+
+        .full-day-button {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .half-day-button {
+            background-color: var(--primary-color);
+            color: white;
+            opacity: 0.9;
+        }
+
+        .back-button {
+            background-color: #4a4a4a;
+            color: white;
+        }
+
+        .full-day-button:hover { opacity: 0.9; }
+        .half-day-button:hover { opacity: 1; }
+        .back-button:hover { background-color: #5a5a5a; }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 4px;
+            color: white;
+            z-index: 9999;
+            display: none;
+        }
+
+        .toast.success { background-color: var(--success-color); }
+        .toast.error { background-color: #f44336; }
+        .toast.info { background-color: #2196f3; }
     </style>
 
     <script>
@@ -317,30 +393,69 @@
         }
 
         function showReservationModal(date, isReserved) {
-            selectedDate = date;
             const modal = document.getElementById('reservationModal');
-            const content = modal.querySelector('.modal-content');
+            const dateDisplay = document.getElementById('selectedDateDisplay');
+            const reservationOptions = modal.querySelector('.reservation-options');
             
-            if (isReserved) {
-                content.innerHTML = `
-                    <h3>Cancelar Reserva</h3>
-                    <div class="reservation-options">
-                        <button onclick="cancelReservation('${date}')" style="background-color: #e74c3c">Cancelar Reserva</button>
-                        <button onclick="closeModal()" class="cancel-btn">Voltar</button>
-                    </div>
-                `;
-            } else {
-                content.innerHTML = `
-                    <h3>Reserva</h3>
-                    <div class="reservation-options">
-                        <button onclick="makeReservation('full')">Dia Inteiro</button>
-                        <button onclick="makeReservation('half')">Meio Período</button>
-                        <button onclick="closeModal()" class="cancel-btn">Cancelar</button>
-                    </div>
-                `;
+            if (!modal || !dateDisplay || !reservationOptions) {
+                console.error('Elementos do modal não encontrados');
+                return;
             }
             
+            selectedDate = date;
             modal.style.display = 'block';
+            
+            // Mostrar a data selecionada
+            const dateObj = new Date(date);
+            dateDisplay.textContent = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+
+            // Buscar estado do office para o dia
+            fetch(`/office-state/${date}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao buscar estado do office');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const occupancyHtml = `
+                        <div class="office-state">
+                            <div class="meter">
+                                <div class="meter-fill" style="width: ${(data.count / data.total_spots) * 100}%"></div>
+                            </div>
+                            <div class="occupancy-text">
+                                ${data.count} de ${data.total_spots} pessoas
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Limpar opções existentes
+                    reservationOptions.innerHTML = occupancyHtml;
+                    
+                    // Adicionar botões apropriados
+                    if (isReserved) {
+                        reservationOptions.innerHTML += `
+                            <button onclick="cancelReservation('${date}')" class="full-day-button">Cancelar Reserva</button>
+                            <button onclick="closeModal()" class="back-button">Voltar</button>
+                        `;
+                    } else {
+                        reservationOptions.innerHTML += `
+                            <button onclick="makeReservation('full')" class="full-day-button">Dia Inteiro</button>
+                            <button onclick="makeReservation('half')" class="half-day-button">Meio Período</button>
+                            <button onclick="closeModal()" class="back-button">Voltar</button>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    // Em caso de erro, mostrar modal sem a barra de progresso
+                    reservationOptions.innerHTML = isReserved
+                        ? `<button onclick="cancelReservation('${date}')" class="full-day-button">Cancelar Reserva</button>
+                           <button onclick="closeModal()" class="back-button">Voltar</button>`
+                        : `<button onclick="makeReservation('full')" class="full-day-button">Dia Inteiro</button>
+                           <button onclick="makeReservation('half')" class="half-day-button">Meio Período</button>
+                           <button onclick="closeModal()" class="back-button">Voltar</button>`;
+                });
         }
 
         function closeModal() {
