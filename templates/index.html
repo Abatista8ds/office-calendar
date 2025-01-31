@@ -5,7 +5,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div id="toast" class="toast" style="display: none;"></div>
+    <div id="toast" class="toast"></div>
 
     <div class="header">
         <div class="logo">Reservas | Office</div>
@@ -287,6 +287,7 @@
         .back-button:hover { background-color: #5a5a5a; }
 
         .toast {
+            display: none;
             position: fixed;
             bottom: 20px;
             left: 50%;
@@ -294,261 +295,400 @@
             padding: 12px 24px;
             border-radius: 4px;
             color: white;
+            font-size: 0.9em;
             z-index: 9999;
-            display: none;
+            animation: fadeIn 0.3s ease;
         }
 
-        .toast.success { background-color: var(--success-color); }
-        .toast.error { background-color: #f44336; }
-        .toast.info { background-color: #2196f3; }
+        .toast.success {
+            background-color: #4caf50;
+        }
+
+        .toast.error {
+            background-color: #f44336;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        /* Tooltips */
+        .calendar-day {
+            position: relative;
+        }
+
+        .calendar-day:hover .tooltip {
+            display: block;
+        }
+
+        .tooltip {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 10px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border-radius: 4px;
+            font-size: 0.8em;
+            white-space: nowrap;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            pointer-events: none;
+            margin-bottom: 5px;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--bg-color) transparent transparent transparent;
+        }
     </style>
 
     <script>
-        let currentDate = new Date();
-        let selectedDate = null;
-        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-        ];
+    document.addEventListener('DOMContentLoaded', () => {
+        // Verificar todas as possíveis classes/IDs
+        console.log('Elementos encontrados:', {
+            '.calendar-container': document.querySelector('.calendar-container'),
+            '.calendar-grid': document.querySelector('.calendar-grid'),
+            '#calendar': document.querySelector('#calendar'),
+            'all divs': document.querySelectorAll('div')
+        });
+    });
 
-        function loadMonth(date, showErrors = false) {
-            // Atualizar título do mês
-            document.getElementById('monthDisplay').textContent = 
-                `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+    let currentDate = new Date();
+    let selectedDate = null;
+    const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
 
-            // Buscar dados do mês
-            fetch(`/month-data?year=${date.getFullYear()}&month=${date.getMonth() + 1}`)
-                .then(response => response.json())
-                .then(reservations => {
-                    renderCalendar(reservations, date);
-                })
-                .catch(error => {
-                    if (showErrors) {
-                        console.error('Erro ao carregar dados:', error);
-                    }
-                });
+    function loadMonth(date, showErrors = false) {
+        // Atualizar título do mês
+        document.getElementById('monthDisplay').textContent = 
+            `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+
+        // Buscar dados do mês
+        fetch(`/month-data?year=${date.getFullYear()}&month=${date.getMonth() + 1}`)
+            .then(response => response.json())
+            .then(reservations => {
+                renderCalendar(reservations, date);
+            })
+            .catch(error => {
+                if (showErrors) {
+                    console.error('Erro ao carregar dados:', error);
+                }
+            });
+    }
+
+    function renderCalendar(data) {
+        console.log('Dados originais:', data);
+        
+        const calendarContainer = document.getElementById('daysContainer');
+        if (!calendarContainer) {
+            console.error('Container do calendário não encontrado');
+            return;
         }
-
-        function renderCalendar(reservations, date) {
-            const daysContainer = document.getElementById('daysContainer');
-            daysContainer.innerHTML = '';
-            
-            const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-            const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-            
-            // Adicionar dias vazios iniciais
-            for (let i = 0; i < firstDay.getDay(); i++) {
-                const dayDiv = document.createElement('div');
-                dayDiv.className = 'calendar-day';
-                daysContainer.appendChild(dayDiv);
-            }
-
-            // Calcular total de dias do mês
-            let monthDays = reservations.reduce((total, res) => {
-                return total + (res.is_mine ? (res.type === 'half' ? 0.5 : 1) : 0);
-            }, 0);
-
-            // Renderizar dias
-            for (let day = 1; day <= lastDay.getDate(); day++) {
-                const dayDiv = document.createElement('div');
-                dayDiv.className = 'calendar-day';
-                
-                const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const reservation = reservations.find(r => r.date === dateStr);
-
-                const currentDayDate = new Date(date.getFullYear(), date.getMonth(), day);
-                const isWeekend = currentDayDate.getDay() === 0 || currentDayDate.getDay() === 6;
-                
-                if (isWeekend) {
-                    dayDiv.classList.add('weekend');
-                }
-
-                if (reservation) {
-                    if (reservation.is_mine) {
-                        dayDiv.classList.add('reserved');
-                        if (monthDays >= 10) {
-                            dayDiv.classList.add('goal-reached');
-                        }
-                    } else if (reservation.is_full) {
-                        dayDiv.classList.add('day-full');
-                    }
-                }
-
-                if (!isWeekend && (!reservation || !reservation.is_full || reservation.is_mine)) {
-                    dayDiv.onclick = () => showReservationModal(dateStr, reservation?.is_mine ?? false);
-                }
-
-                dayDiv.innerHTML = `
-                    <span class="day-number">${day}</span>
-                    ${reservation?.is_mine ? `<span class="reservation-type">${reservation.type === 'half' ? '50%' : '100%'}</span>` : ''}
-                `;
-
-                daysContainer.appendChild(dayDiv);
-            }
-
-            // Atualizar contador de dias
-            const daysInfo = document.querySelector('.days-info');
-            if (daysInfo) {
-                daysInfo.textContent = `${monthDays}/10 dias este mês`;
-            }
+        
+        calendarContainer.innerHTML = '';
+        
+        // Atualizar contagem no topo
+        updateDaysCount(data);
+        
+        // Configuração inicial do mês
+        const firstDay = new Date(data[0].date);
+        const year = firstDay.getFullYear();
+        const month = firstDay.getMonth();
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const firstDayOfMonth = new Date(year, month, 1);
+        const startingDay = firstDayOfMonth.getDay();
+        
+        // Adicionar dias vazios no início
+        for (let i = 0; i < startingDay; i++) {
+            const emptyDay = document.createElement('div');
+            emptyDay.className = 'calendar-day';
+            calendarContainer.appendChild(emptyDay);
         }
-
-        function showReservationModal(date, isReserved) {
-            const modal = document.getElementById('reservationModal');
-            const dateDisplay = document.getElementById('selectedDateDisplay');
-            const reservationOptions = modal.querySelector('.reservation-options');
+        
+        // Criar objeto com todos os dias do mês
+        const calendarData = {};
+        for (let day = 1; day <= lastDay; day++) {
+            const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dayDate = new Date(date);
             
-            if (!modal || !dateDisplay || !reservationOptions) {
-                console.error('Elementos do modal não encontrados');
-                return;
+            calendarData[date] = {
+                reserved: false,
+                type: null,
+                is_full: false,
+                count: 0,
+                isWeekend: dayDate.getDay() === 0 || dayDate.getDay() === 6,
+                goal_reached: false
+            };
+        }
+        
+        // Atualizar com as reservas existentes
+        data.forEach(item => {
+            if (calendarData[item.date]) {
+                calendarData[item.date] = {
+                    ...calendarData[item.date],
+                    reserved: item.is_mine,
+                    type: item.type,
+                    is_full: item.is_full,
+                    count: item.is_full ? 3 : (item.type === 'full' ? 1 : 0.5),
+                    goal_reached: item.goal_reached
+                };
+            }
+        });
+        
+        // Renderizar o calendário
+        Object.entries(calendarData).forEach(([date, info]) => {
+            const dayDate = new Date(date);
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'calendar-day';
+            
+            // Criar div para o número do dia
+            const dayNumber = document.createElement('div');
+            dayNumber.className = 'day-number';
+            dayNumber.textContent = dayDate.getDate();
+            
+            // Criar div para o tipo de reserva
+            const reservationType = document.createElement('div');
+            reservationType.className = 'reservation-type';
+            if (info.reserved) {
+                reservationType.textContent = info.type === 'full' ? '100%' : '50%';
             }
             
-            selectedDate = date;
-            modal.style.display = 'block';
+            // Adicionar classes apropriadas
+            if (info.reserved) {
+                dayDiv.classList.add('reserved');
+                if (info.type === 'half') {
+                    dayDiv.classList.add('half-day');
+                }
+            }
             
-            // Mostrar a data selecionada
-            const dateObj = new Date(date);
-            dateDisplay.textContent = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+            if (info.isWeekend) {
+                dayDiv.classList.add('weekend');
+            }
+            
+            if (info.is_full) {
+                dayDiv.classList.add('day-full');
+            }
+            
+            if (info.goal_reached) {
+                dayDiv.classList.add('goal-reached');
+            }
+            
+            // Adicionar tooltip
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip';
+            
+            if (info.isWeekend) {
+                tooltip.textContent = 'Fim de semana';
+            } else if (info.is_full) {
+                tooltip.textContent = 'Office cheio';
+            } else {
+                tooltip.textContent = 'Office livre';
+            }
+            
+            // Montar a estrutura do dia
+            dayDiv.appendChild(dayNumber);
+            dayDiv.appendChild(reservationType);
+            dayDiv.appendChild(tooltip);
+            
+            // Permitir clique se:
+            // 1. Não for fim de semana E
+            // 2. (Não estiver cheio OU é uma reserva do usuário)
+            if (!info.isWeekend && (!info.is_full || info.reserved)) {
+                dayDiv.onclick = () => showReservationModal(date, info.reserved);
+            }
+            
+            calendarContainer.appendChild(dayDiv);
+        });
+    }
 
-            // Buscar estado do office para o dia
-            fetch(`/office-state/${date}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro ao buscar estado do office');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    const occupancyHtml = `
-                        <div class="office-state">
-                            <div class="meter">
-                                <div class="meter-fill" style="width: ${(data.count / data.total_spots) * 100}%"></div>
-                            </div>
-                            <div class="occupancy-text">
-                                ${data.count} de ${data.total_spots} pessoas
-                            </div>
+    // Atualizar função de contagem para considerar meio período
+    function updateDaysCount(data) {
+        const totalDays = data.reduce((sum, item) => {
+            if (item.is_mine) {
+                return sum + (item.type === 'half' ? 0.5 : 1);
+            }
+            return sum;
+        }, 0);
+        
+        const daysInfo = document.querySelector('.days-info');
+        if (daysInfo) {
+            // Formatar para mostrar meio dia quando necessário
+            const formattedCount = Number.isInteger(totalDays) ? 
+                totalDays : 
+                totalDays.toFixed(1);
+            
+            daysInfo.textContent = `${formattedCount}/10 dias este mês`;
+        }
+    }
+
+    function showReservationModal(date, isReserved) {
+        const modal = document.getElementById('reservationModal');
+        const dateDisplay = document.getElementById('selectedDateDisplay');
+        const reservationOptions = modal.querySelector('.reservation-options');
+        
+        if (!modal || !dateDisplay || !reservationOptions) {
+            console.error('Elementos do modal não encontrados');
+            return;
+        }
+        
+        selectedDate = date;
+        modal.style.display = 'block';
+        
+        // Mostrar a data selecionada
+        const dateObj = new Date(date);
+        dateDisplay.textContent = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+
+        // Buscar estado do office para o dia
+        fetch(`/office-state/${date}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar estado do office');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const occupancyHtml = `
+                    <div class="office-state">
+                        <div class="meter">
+                            <div class="meter-fill" style="width: ${(data.count / data.total_spots) * 100}%"></div>
                         </div>
+                        <div class="occupancy-text">
+                            ${data.count} de ${data.total_spots} pessoas
+                        </div>
+                    </div>
+                `;
+                
+                // Limpar opções existentes
+                reservationOptions.innerHTML = occupancyHtml;
+                
+                // Adicionar botões apropriados
+                if (isReserved) {
+                    reservationOptions.innerHTML += `
+                        <button onclick="cancelReservation('${date}')" class="full-day-button">Cancelar Reserva</button>
+                        <button onclick="closeModal()" class="back-button">Voltar</button>
                     `;
-                    
-                    // Limpar opções existentes
-                    reservationOptions.innerHTML = occupancyHtml;
-                    
-                    // Adicionar botões apropriados
-                    if (isReserved) {
-                        reservationOptions.innerHTML += `
-                            <button onclick="cancelReservation('${date}')" class="full-day-button">Cancelar Reserva</button>
-                            <button onclick="closeModal()" class="back-button">Voltar</button>
-                        `;
-                    } else {
-                        reservationOptions.innerHTML += `
-                            <button onclick="makeReservation('full')" class="full-day-button">Dia Inteiro</button>
-                            <button onclick="makeReservation('half')" class="half-day-button">Meio Período</button>
-                            <button onclick="closeModal()" class="back-button">Voltar</button>
-                        `;
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro:', error);
-                    // Em caso de erro, mostrar modal sem a barra de progresso
-                    reservationOptions.innerHTML = isReserved
-                        ? `<button onclick="cancelReservation('${date}')" class="full-day-button">Cancelar Reserva</button>
-                           <button onclick="closeModal()" class="back-button">Voltar</button>`
-                        : `<button onclick="makeReservation('full')" class="full-day-button">Dia Inteiro</button>
-                           <button onclick="makeReservation('half')" class="half-day-button">Meio Período</button>
-                           <button onclick="closeModal()" class="back-button">Voltar</button>`;
-                });
-        }
-
-        function closeModal() {
-            document.getElementById('reservationModal').style.display = 'none';
-            selectedDate = null;
-        }
-
-        function makeReservation(type) {
-            if (!selectedDate) return;
-            
-            fetch('/make-reservation', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    date: selectedDate,
-                    type: type,
-                    currentlyReserved: false
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(data => Promise.reject(data.error));
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    closeModal();
-                    loadMonth(currentDate);  // Recarrega o mês atual
+                } else {
+                    reservationOptions.innerHTML += `
+                        <button onclick="makeReservation('full')" class="full-day-button">Dia Inteiro</button>
+                        <button onclick="makeReservation('half')" class="half-day-button">Meio Período</button>
+                        <button onclick="closeModal()" class="back-button">Voltar</button>
+                    `;
                 }
             })
             .catch(error => {
                 console.error('Erro:', error);
-                alert(typeof error === 'string' ? error : 'Erro ao processar a reserva');
+                // Em caso de erro, mostrar modal sem a barra de progresso
+                reservationOptions.innerHTML = isReserved
+                    ? `<button onclick="cancelReservation('${date}')" class="full-day-button">Cancelar Reserva</button>
+                       <button onclick="closeModal()" class="back-button">Voltar</button>`
+                    : `<button onclick="makeReservation('full')" class="full-day-button">Dia Inteiro</button>
+                       <button onclick="makeReservation('half')" class="half-day-button">Meio Período</button>
+                       <button onclick="closeModal()" class="back-button">Voltar</button>`;
             });
-        }
+    }
 
-        function cancelReservation(date) {
-            fetch('/make-reservation', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    date: date,
-                    currentlyReserved: true
-                })
+    function closeModal() {
+        document.getElementById('reservationModal').style.display = 'none';
+        selectedDate = null;
+    }
+
+    function makeReservation(type) {
+        if (!selectedDate) return;
+        
+        fetch('/make-reservation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                date: selectedDate,
+                type: type,
+                currentlyReserved: false
             })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(data => Promise.reject(data.error));
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    closeModal();
-                    loadMonth(currentDate);  // Recarrega o mês atual
-                }
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-                alert(typeof error === 'string' ? error : 'Erro ao cancelar reserva');
-            });
-        }
-
-        function previousMonth() {
-            currentDate.setMonth(currentDate.getMonth() - 1);
-            loadMonth(currentDate, true);
-        }
-
-        function nextMonth() {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            loadMonth(currentDate, true);
-        }
-
-        // Carrega o mês inicial
-        loadMonth(currentDate, true);
-
-        // Atualização automática a cada 30 segundos
-        setInterval(() => {
-            loadMonth(currentDate);
-        }, 30000);
-
-        // Fechar modal se clicar fora
-        window.onclick = function(event) {
-            const modal = document.getElementById('reservationModal');
-            if (event.target == modal) {
-                closeModal();
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => Promise.reject(data.error));
             }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                closeModal();
+                loadMonth(currentDate);  // Recarrega o mês atual
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert(typeof error === 'string' ? error : 'Erro ao processar a reserva');
+        });
+    }
+
+    function cancelReservation(date) {
+        fetch('/make-reservation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                date: date,
+                currentlyReserved: true
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => Promise.reject(data.error));
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                closeModal();
+                loadMonth(currentDate);  // Recarrega o mês atual
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert(typeof error === 'string' ? error : 'Erro ao cancelar reserva');
+        });
+    }
+
+    function previousMonth() {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        loadMonth(currentDate, true);
+    }
+
+    function nextMonth() {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        loadMonth(currentDate, true);
+    }
+
+    // Carrega o mês inicial
+    loadMonth(currentDate, true);
+
+    // Atualização automática a cada 30 segundos
+    setInterval(() => {
+        loadMonth(currentDate);
+    }, 30000);
+
+    // Fechar modal se clicar fora
+    window.onclick = function(event) {
+        const modal = document.getElementById('reservationModal');
+        if (event.target == modal) {
+            closeModal();
         }
+    }
     </script>
 </body>
 </html>
