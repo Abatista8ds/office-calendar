@@ -12,6 +12,7 @@ import json
 from collections import defaultdict
 from calendar import month_name
 import threading
+from dateutil.relativedelta import relativedelta
 
 # Adicionar no início do arquivo, junto com as outras importações
 def admin_required(f):
@@ -19,7 +20,7 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
             return jsonify({'error': 'Não autorizado'}), 401
-        if session['user']['email'] not in admin_emails:
+        if session['user']['email'] not in get_admin_emails():
             return jsonify({'error': 'Acesso restrito a administradores'}), 403
         return f(*args, **kwargs)
     return decorated_function
@@ -1018,44 +1019,75 @@ def calculate_stats(period='current'):
 @app.route('/admin/stats')
 @admin_required
 def admin_stats():
-    # Query para todas as reservas ativas
-    query = client.query(kind='Reservation')
-    query.add_filter('status', '=', 'active')
-    reservations = list(query.fetch())
-    
-    # Pegar mês atual
-    current_month = datetime.now().strftime('%Y-%m')
-    
-    # Processar dados
-    users = set()
-    active_users = set()
-    user_days = defaultdict(float)
-    
-    for res in reservations:
-        user = res.get('user')
-        if not user:
-            continue
-            
-        users.add(user)
+    try:
+        period = request.args.get('period', 'current')
         
-        # Verificar se é do mês atual
-        if res.get('date', '').startswith(current_month):
-            active_users.add(user)
-            user_days[user] += 1.0 if res.get('type') == 'full' else 0.5
-    
-    # Calcular médias
-    total_users = len(users)
-    active_users_count = len(active_users)
-    
-    # Calcular média apenas dos usuários ativos
-    active_days = [days for user, days in user_days.items() if user in active_users]
-    avg_days = sum(active_days) / len(active_days) if active_days else 0
-    
-    return jsonify({
-        'total_users': total_users,
-        'active_users': active_users_count,
-        'avg_days': round(avg_days, 1)  # Arredondar para 1 casa decimal
-    })
+        # Definir período
+        today = datetime.now()
+        
+        if period == 'current':
+            start_date = today.replace(day=1)
+            end_date = (start_date + relativedelta(months=1, days=-1))
+            period_name = f"{start_date.strftime('%B %Y')}"
+            
+        elif period == 'previous':
+            start_date = (today + relativedelta(months=-1)).replace(day=1)
+            end_date = (start_date + relativedelta(months=1, days=-1))
+            period_name = f"{start_date.strftime('%B %Y')}"
+            
+        elif period == 'next':
+            start_date = (today + relativedelta(months=1)).replace(day=1)
+            end_date = (start_date + relativedelta(months=1, days=-1))
+            period_name = f"{start_date.strftime('%B %Y')}"
+            
+        elif period == 'year':
+            start_date = today.replace(month=1, day=1)
+            end_date = today.replace(month=12, day=31)
+            period_name = f"Ano {today.year}"
+            
+        else:
+            return jsonify({'error': 'Período inválido'})
+
+        # Buscar todas as reservas do período
+        query = client.query(kind='Reservation')
+        query.add_filter('date', '>=', start_date.strftime('%Y-%m-%d'))
+        query.add_filter('date', '<=', end_date.strftime('%Y-%m-%d'))
+        query.add_filter('status', '=', 'active')
+        reservations = list(query.fetch())
+
+        # Calcular estatísticas
+        total_users = len(set(r['user'] for r in reservations))
+        
+        # Calcular ocupação média
+        business_days = sum(1 for date in (start_date + timedelta(n) for n in range((end_date - start_date).days + 1))
+                          if date.weekday() < 5)
+        total_spots = business_days * 3  # 3 vagas por dia
+        total_reservations = sum(1 if r['type'] == 'full' else 0.5 for r in reservations)
+        avg_occupation = round((total_reservations / total_spots) * 100) if total_spots > 0 else 0
+
+        # Calcular meta atingida (10 dias por mês ou 120 dias por ano)
+        users_with_days = {}
+        for res in reservations:
+            if res['user'] not in users_with_days:
+                users_with_days[res['user']] = 0
+            users_with_days[res['user']] += 1 if res['type'] == 'full' else 0.5
+
+        # Meta diferente para ano (120 dias) e mês (10 dias)
+        required_days = 120 if period == 'year' else 10
+        users_reached_goal = sum(1 for days in users_with_days.values() if days >= required_days)
+        goal_reached = round((users_reached_goal / total_users * 100) if total_users > 0 else 0)
+
+        return jsonify({
+            'total_users': total_users,
+            'avg_occupation': avg_occupation,
+            'total_reservations': total_reservations,
+            'goal_reached': goal_reached,
+            'period_name': period_name
+        })
+
+    except Exception as e:
+        print(f"Erro ao calcular estatísticas: {str(e)}")
+        return jsonify({'error': str(e)})
 
 @app.route('/month-data')
 def month_data():

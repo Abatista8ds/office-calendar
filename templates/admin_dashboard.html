@@ -432,6 +432,44 @@
             padding: 20px;
             color: #888;
         }
+
+        /* Adicionar estilos para tooltips */
+        .calendar-day {
+            position: relative;
+        }
+
+        .calendar-day:hover .tooltip {
+            display: block;
+        }
+
+        .tooltip {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 10px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border-radius: 4px;
+            font-size: 0.8em;
+            white-space: nowrap;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            pointer-events: none;
+            margin-bottom: 5px;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--bg-color) transparent transparent transparent;
+        }
     </style>
 </head>
 <body>
@@ -732,6 +770,11 @@
                         }
                         if (day.is_full && !day.reserved) classes.push('day-full');
                         
+                        // Determinar o texto do tooltip
+                        let tooltipText = isWeekend ? 'Fim de semana' : 
+                                         day.is_full ? 'Office cheio' : 
+                                         'Office livre';
+                        
                         calendarHTML += `
                             <div class="${classes.join(' ')}" 
                                  onclick="toggleReservation('${email}', '${day.date}', ${day.reserved})"
@@ -739,6 +782,7 @@
                                 <span class="day-number">${date.getDate()}</span>
                                 ${day.reserved ? `<span class="reservation-type">${day.type === 'half' ? '50%' : '100%'}</span>` : ''}
                                 ${day.is_full ? '<span class="office-status">Office Cheio</span>' : ''}
+                                <div class="tooltip">${tooltipText}</div>
                             </div>
                         `;
                     });
