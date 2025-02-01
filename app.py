@@ -379,109 +379,94 @@ def cancel_reservation(reservation_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/dashboard')
+@admin_required
 def admin_dashboard():
     try:
-        if 'user' not in session:
-            return redirect('/login')
+        period = request.args.get('period', 'current')
+        today = datetime.now()
+        
+        # Determinar o período baseado no parâmetro
+        if period == 'previous':
+            start_date = (today.replace(day=1) - relativedelta(months=1))
+            period_title = (today - relativedelta(months=1)).strftime('%B %Y')
+        elif period == 'next':
+            start_date = (today.replace(day=1) + relativedelta(months=1))
+            period_title = (today + relativedelta(months=1)).strftime('%B %Y')
+        elif period == 'annual':
+            start_date = today.replace(month=1, day=1)
+            period_title = f"Ano {today.year}"
+        else:  # current
+            start_date = today.replace(day=1)
+            period_title = today.strftime('%B %Y')
             
-        if session['user']['email'] not in ADMIN_EMAILS:
-            return "Não autorizado", 401
-            
-        # Buscar todas as reservas
+        # Ajustar data final
+        if period == 'annual':
+            end_date = start_date.replace(month=12, day=31)
+        else:
+            next_month = start_date + relativedelta(months=1)
+            end_date = next_month - relativedelta(days=1)
+        
+        # Buscar usuários
+        user_query = client.query(kind='User')
+        users = list(user_query.fetch())
+        
+        # Buscar reservas do período
         query = client.query(kind='Reservation')
+        query.add_filter('date', '>=', start_date.strftime('%Y-%m-%d'))
+        query.add_filter('date', '<=', end_date.strftime('%Y-%m-%d'))
+        query.add_filter('status', '=', 'active')
         reservations = list(query.fetch())
         
-        # Obter mês atual e adjacentes de forma correta
-        current_date = datetime.now()
-        
-        # Cálculo correto dos meses
-        current_month = current_date.replace(day=1)
-        prev_month = (current_month - timedelta(days=1)).replace(day=1)
-        next_month = (current_month + timedelta(days=32)).replace(day=1)
-        
-        months_to_show = [prev_month, current_month, next_month]
-        
-        # Organizar dados por usuário e mês
-        user_data = defaultdict(lambda: defaultdict(lambda: {
-            'required': 10,
-            'completed': 0,
-            'full_days': 0,
-            'half_days': 0
-        }))
-        
+        # Calcular dias por usuário considerando meio dia
+        user_days = defaultdict(float)  # Mudado para float para suportar 0.5
         for res in reservations:
-            if res.get('status') != 'active':
-                continue
-                
-            user = res['user']
-            date_str = res.get('date')
-            if not date_str:
-                continue
-                
-            try:
-                date = datetime.strptime(date_str, '%Y-%m-%d')
-                month_key = f"{date.year}-{date.month:02d}"
-                
-                if res.get('type') == 'full':
-                    user_data[user][month_key]['full_days'] += 1
-                    user_data[user][month_key]['completed'] += 1
-                else:  # half day
-                    user_data[user][month_key]['half_days'] += 1
-                    user_data[user][month_key]['completed'] += 0.5
-            except ValueError:
-                print(f"Data inválida ignorada: {date_str}")
-                continue
+            user_days[res['user']] += 1.0 if res.get('type') == 'full' else 0.5
         
-        # Preparar dados para o template
-        dashboard_data = []
-        
-        for user, months in user_data.items():
-            user_months = []
-            year_total = 0
+        # Preparar dados para a tabela
+        users_data = []
+        for user in users:
+            email = user.get('email')
+            days = user_days.get(email, 0.0)  # Pegar valor float
             
-            # Processar os três meses
-            for date in months_to_show:
-                month_key = f"{date.year}-{date.month:02d}"
-                month_data = months.get(month_key, {
-                    'required': 10,
-                    'completed': 0,
-                    'full_days': 0,
-                    'half_days': 0
-                })
-                
-                month_info = {
-                    'month': month_key,
-                    'month_name': f"{meses[date.month]} {date.year}",
-                    'required': month_data['required'],
-                    'completed': month_data['completed'],
-                    'full_days': month_data['full_days'],
-                    'half_days': month_data['half_days'],
-                    'percentage': round((month_data['completed'] / month_data['required']) * 100, 1)
-                    if month_data['required'] > 0 else 0,
-                    'is_current': date.month == current_date.month and date.year == current_date.year
-                }
-                
-                user_months.append(month_info)
-                
-                # Somar ao total do ano apenas se for do ano atual
-                if date.year == current_date.year:
-                    year_total += month_data['completed']
+            # Calcular progresso
+            progress = (days / 10.0) * 100 if period != 'annual' else 0
             
-            dashboard_data.append({
-                'email': user,
-                'months': user_months,
-                'year_total': year_total
+            users_data.append({
+                'name': user.get('name', 'Sem nome'),
+                'email': email,
+                'team': user.get('team', 'Sem equipe'),
+                'days_in_period': days,  # Já é float
+                'progress': min(progress, 100)  # Limitar a 100%
             })
         
-        return render_template(
-            'admin_dashboard.html',
-            users=sorted(dashboard_data, key=lambda x: x['email']),
-            stats=calculate_stats('current')  # Stats iniciais
-        )
+        # Ordenar por dias (decrescente) e nome (crescente)
+        users_data.sort(key=lambda x: (-x['days_in_period'], x['name']))
+        
+        # Adicionar estatísticas básicas
+        stats = {
+            'total_users': len(users),
+            'total_reservations': len(reservations),
+            'average_days': sum(user_days.values()) / len(users) if users else 0
+        }
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'users': users_data,
+                'period_title': period_title,
+                'stats': stats
+            })
+            
+        return render_template('admin_dashboard.html',
+                             users=users_data,
+                             current_period=period,
+                             period_title=period_title,
+                             stats=stats)
                              
     except Exception as e:
-        print(f"Erro no dashboard: {e}")
-        return str(e), 500
+        print(f"Erro no dashboard: {str(e)}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': str(e)}), 500
+        return f"Erro: {str(e)}", 500
 
 @app.route('/admin/update_requirements', methods=['POST'])
 @admin_required
@@ -937,7 +922,7 @@ def calculate_stats(period='current'):
             period_name = f"{meses[today.month]} {today.year}"
         elif period == 'previous':
             if today.month == 1:
-                start_date = today.replace(year=today.year-1, month=12, day=1)
+                start_date = today.replace(year=today.year-1, month=1, day=1)
                 end_date = start_date.replace(day=31)
             else:
                 start_date = today.replace(month=today.month-1, day=1)
@@ -1075,7 +1060,7 @@ def admin_stats():
         # Meta diferente para ano (120 dias) e mês (10 dias)
         required_days = 120 if period == 'year' else 10
         users_reached_goal = sum(1 for days in users_with_days.values() if days >= required_days)
-        goal_reached = round((users_reached_goal / total_users * 100) if total_users > 0 else 0)
+        goal_reached = round(users_reached_goal / total_users * 100) if total_users > 0 else 0
 
         return jsonify({
             'total_users': total_users,
@@ -1168,6 +1153,222 @@ def get_office_state(date):
         })
     except Exception as e:
         print(f"Erro ao buscar estado do office: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+def get_user_data(email):
+    print(f"Buscando dados do usuário: {email}")  # Debug
+    query = client.query(kind='User')
+    query.add_filter('email', '=', email)
+    user = list(query.fetch(limit=1))
+    
+    if not user:
+        print(f"Criando novo usuário: {email}")  # Debug
+        # Criar novo usuário
+        user_key = client.key('User')
+        user = datastore.Entity(key=user_key)
+        user.update({
+            'email': email,
+            'name': email.split('@')[0],
+            'team': 'default-team',
+            'is_team_lead': False,
+            'is_admin': email in get_admin_emails(),
+            'created_at': datetime.datetime.now()
+        })
+        client.put(user)
+        print(f"Novo usuário criado: {user}")  # Debug
+        return user
+    
+    print(f"Usuário encontrado: {user[0]}")  # Debug
+    return user[0]
+
+@app.route('/admin/teams')
+@admin_required
+def admin_teams():
+    # Buscar todas as equipas
+    query = client.query(kind='Team')
+    teams = list(query.fetch())
+    
+    # Buscar todos os usuários
+    query = client.query(kind='User')
+    users = list(query.fetch())
+    
+    return render_template(
+        'admin_teams.html',
+        teams=teams,
+        users=users
+    )
+
+@app.route('/admin/team/create', methods=['POST'])
+@admin_required
+def create_team():
+    try:
+        name = request.form.get('name')
+        team_lead = request.form.get('team_lead')
+        
+        team_key = client.key('Team')
+        team = datastore.Entity(key=team_key)
+        team.update({
+            'name': name,
+            'team_lead': team_lead,
+            'mandatory_days': [],
+            'created_at': datetime.datetime.now()
+        })
+        client.put(team)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/admin/team/<team_id>')
+@admin_required
+def get_team(team_id):
+    team_key = client.key('Team', team_id)
+    team = client.get(team_key)
+    if not team:
+        return jsonify({'error': 'Equipa não encontrada'}), 404
+    return jsonify(team)
+
+@app.route('/admin/team/update', methods=['POST'])
+@admin_required
+def update_team():
+    try:
+        data = request.get_json()
+        team_id = data.get('id')
+        team_key = client.key('Team', team_id)
+        team = client.get(team_key)
+        
+        if not team:
+            return jsonify({'error': 'Equipa não encontrada'}), 404
+            
+        team.update({
+            'name': data.get('name'),
+            'team_lead': data.get('team_lead'),
+            'updated_at': datetime.datetime.now()
+        })
+        client.put(team)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+def count_user_days(reservations):
+    """Conta os dias de reserva de um usuário"""
+    return sum(1 if r['type'] == 'full' else 0.5 for r in reservations)
+
+@app.route('/debug/users')
+@admin_required
+def debug_users():
+    query = client.query(kind='User')
+    users = list(query.fetch())
+    return jsonify([
+        {
+            'email': user.get('email'),
+            'name': user.get('name'),
+            'team': user.get('team'),
+            'is_admin': user.get('is_admin')
+        } 
+        for user in users
+    ])
+
+@app.route('/debug/all')
+@admin_required
+def debug_all():
+    # Buscar usuários
+    user_query = client.query(kind='User')
+    users = list(user_query.fetch())
+    
+    # Buscar reservas
+    res_query = client.query(kind='Reservation')
+    reservations = list(res_query.fetch())
+    
+    # Buscar admins
+    admin_query = client.query(kind='Admin')
+    admins = list(admin_query.fetch())
+    
+    return jsonify({
+        'users': [{
+            'email': u.get('email'),
+            'name': u.get('name'),
+            'team': u.get('team'),
+            'is_admin': u.get('is_admin'),
+            'key': u.key.id_or_name
+        } for u in users],
+        
+        'reservations': [{
+            'user': r.get('user'),
+            'date': r.get('date'),
+            'type': r.get('type'),
+            'status': r.get('status')
+        } for r in reservations],
+        
+        'admins': [{
+            'email': a.get('email'),
+            'key': a.key.id_or_name
+        } for a in admins]
+    })
+
+@app.route('/user/calendar/<email>')
+@admin_required
+def user_calendar(email):
+    try:
+        period = request.args.get('period', 'current')
+        today = datetime.now()
+        
+        # Determinar período
+        if period == 'previous':
+            start_date = (today.replace(day=1) - relativedelta(months=1))
+        elif period == 'next':
+            start_date = (today.replace(day=1) + relativedelta(months=1))
+        elif period == 'annual':
+            start_date = today.replace(month=1, day=1)
+        else:  # current
+            start_date = today.replace(day=1)
+            
+        # Ajustar data final
+        if period == 'annual':
+            end_date = start_date.replace(month=12, day=31)
+        else:
+            next_month = start_date + relativedelta(months=1)
+            end_date = next_month - relativedelta(days=1)
+            
+        # Buscar reservas do usuário
+        query = client.query(kind='Reservation')
+        query.add_filter('user', '=', email)
+        query.add_filter('date', '>=', start_date.strftime('%Y-%m-%d'))
+        query.add_filter('date', '<=', end_date.strftime('%Y-%m-%d'))
+        query.add_filter('status', '=', 'active')
+        
+        reservations = list(query.fetch())
+        
+        # Calcular dias totais considerando meio dia
+        days_in_month = sum(1.0 if r.get('type') == 'full' else 0.5 
+                          for r in reservations 
+                          if r['status'] == 'active')
+        
+        goal_reached = days_in_month >= 10  # Meta de 10 dias por mês
+        
+        # Formatar dados para o calendário
+        calendar_data = {
+            'reservations': [
+                {
+                    'date': res['date'],
+                    'type': res.get('type', 'full'),
+                    'status': res.get('status', 'active'),
+                    'goal_reached': goal_reached
+                }
+                for res in reservations
+            ],
+            'period': {
+                'start': start_date.strftime('%Y-%m-%d'),
+                'end': end_date.strftime('%Y-%m-%d'),
+                'days_count': days_in_month  # Adicionar contagem total de dias
+            }
+        }
+        
+        return jsonify(calendar_data)
+        
+    except Exception as e:
+        print(f"Erro ao buscar calendário: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

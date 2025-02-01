@@ -2,375 +2,69 @@
 <html>
 <head>
     <title>Dashboard Administrativo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --bg-color: #1a1a1a;
-            --text-color: #ffffff;
-            --primary-color: #ff4444;
-            --card-bg: #2d2d2d;
-            --hover-color: #ff6666;
-            --success-color: #4CAF50;
-            --warning-color: #FFC107;
-        }
+        /* Fonte Montserrat */
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap');
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Montserrat', sans-serif;
+        /* Estilos base */
+        :root {
+            --primary-color: #ff4b4b;
+            --success-color: #28a745;
+            --warning-color: #dc3545;
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-color: #ffffff;
+            --text-muted: #888888;
+            --border-color: #444444;
         }
 
         body {
+            font-family: 'Montserrat', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            line-height: 1.6;
-            padding: 2rem;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #333;
-        }
-
-        .btn {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            text-decoration: none;
-            transition: background-color 0.3s;
-        }
-
-        .btn:hover {
-            background-color: var(--hover-color);
-        }
-
-        .dashboard-table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: var(--card-bg);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #444;
-        }
-
-        th {
-            background-color: #333;
-            color: var(--primary-color);
-            font-weight: 500;
-        }
-
-        tr:hover {
-            background-color: #383838;
-        }
-
-        .progress-cell {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .progress-bar {
-            flex-grow: 1;
-            height: 8px;
-            background-color: #444;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background-color: var(--primary-color);
-            transition: width 0.3s ease;
-        }
-
-        .progress-fill.complete {
-            background-color: var(--success-color);
-        }
-
-        .progress-fill.warning {
-            background-color: var(--warning-color);
-        }
-
-        .percentage {
-            min-width: 45px;
-            text-align: right;
-        }
-
-        .month-details {
-            font-size: 0.9rem;
-            color: #888;
-        }
-
-        .current-month {
-            color: var(--primary-color) !important;
-            font-weight: bold;
-        }
-        
-        td.current-month {
-            background-color: rgba(255, 68, 68, 0.1);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background-color: var(--card-bg);
-            padding: 2rem;
-            border-radius: 8px;
-            max-width: 500px;
-            margin: 50px auto;
-            position: relative;
-        }
-
-        .admin-list {
-            margin: 1.5rem 0;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .admin-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.8rem;
-            background-color: #333;
-            border-radius: 4px;
-            margin-bottom: 0.5rem;
-        }
-
-        .admin-email {
-            color: #fff;
-        }
-
-        .admin-form {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-
-        .admin-input {
-            flex-grow: 1;
-            padding: 0.5rem;
-            border-radius: 4px;
-            border: 1px solid #444;
-            background-color: #333;
-            color: #fff;
-        }
-
-        .admin-btn, .delete-btn {
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .admin-btn {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .admin-btn:hover {
-            background-color: var(--hover-color);
-        }
-
-        .delete-btn {
-            background-color: #dc3545;
-            color: white;
-            padding: 0.3rem 0.8rem;
-        }
-
-        .delete-btn:hover {
-            background-color: #c82333;
-        }
-
-        /* Estilos para as estatísticas */
-        .dashboard-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .stat-card {
-            background-color: var(--card-bg);
-            padding: 1rem;
-            border-radius: 6px;
-            text-align: center;
-        }
-
-        .stat-card h3 {
-            font-size: 0.9rem;
+            line-height: 1.5;
             margin: 0;
-            color: #888;
+            padding: 0;
         }
 
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--primary-color);
-            margin-top: 0.3rem;
+        /* Reset básico */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
-        .divider {
-            border: 0;
-            border-top: 1px solid #333;
-            margin: 1rem 0;
-        }
-
-        .dashboard-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }
-
-        .dashboard-table th {
-            text-align: left;
-            padding: 0.5rem;
-            color: #888;
-            font-weight: normal;
-        }
-
-        .email-cell {
-            color: #888;
-            font-size: 0.85rem;
-        }
-
-        .progress-cell {
-            padding: 0.5rem;
-        }
-
-        .progress-bar {
-            height: 4px;
-            background-color: #333;
-            border-radius: 2px;
-            margin: 0.3rem 0;
-        }
-
-        .progress-fill {
-            height: 100%;
-            border-radius: 2px;
-            transition: width 0.3s;
-        }
-
-        .percentage {
-            font-size: 0.8rem;
-            color: #888;
-        }
-
-        .month-details {
-            font-size: 0.75rem;
-            color: #666;
-            margin-top: 0.2rem;
-        }
-
-        .complete { background-color: #4CAF50; }
-        .warning { background-color: #FFC107; }
-
-        /* Estilos para o modal de detalhes */
-        .month-detail-content {
-            max-width: 800px;
-            width: 90%;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        /* Títulos */
+        h1, h2, h3 {
+            color: var(--text-color);
             margin-bottom: 1rem;
         }
 
-        .close-btn {
-            background: none;
-            border: none;
-            color: #fff;
+        /* Links */
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Títulos e seções */
+        .current-period {
+            margin: 2rem 0;
+        }
+
+        .current-period h2 {
             font-size: 1.5rem;
-            cursor: pointer;
+            margin: 0;
         }
 
-        .weekdays {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-            text-align: center;
-            font-size: 0.8rem;
-            color: #888;
-        }
-
-        .month-calendar {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 0.5rem;
-        }
-
-        .calendar-day {
-            position: relative;
-            min-height: 60px;
-            transition: background-color 0.2s;
-            padding-bottom: 20px; /* Espaço para o "Office Cheio" */
-        }
-
-        .calendar-day:not(.weekend):hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            cursor: pointer !important;
-        }
-
-        .calendar-day.reserved {
-            background-color: var(--primary-color) !important;
-        }
-
-        .calendar-day.reserved.goal-reached {
-            background-color: var(--success-color) !important;
-        }
-
-        .calendar-day.day-full:not(.reserved) {
-            background-color: #333 !important;
-        }
-
-        .office-status {
-            font-size: 0.7rem;
-            color: #888;
-            position: absolute;
-            bottom: 4px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            padding: 0 2px;
-        }
-
-        .reservation-type {
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .period-buttons {
+        /* Menu temporal - Sem bordas, apenas texto */
+        .period-selector {
             display: flex;
             gap: 1.5rem;
             margin-bottom: 1rem;
@@ -379,61 +73,446 @@
         .period-btn {
             background: none;
             border: none;
-            color: #888;
+            color: var(--text-muted);
+            padding: 0.5rem 0;
             cursor: pointer;
-            padding: 0;
+            font-family: 'Montserrat', sans-serif;
             font-size: 0.9rem;
             transition: color 0.3s;
         }
 
-        .period-btn:hover {
-            color: #fff;
-        }
-
+        .period-btn:hover,
         .period-btn.active {
-            color: var(--primary-color);
+            color: var(--text-color);
         }
 
-        .reservation-type-selector {
-            margin: 1rem 0;
-            padding: 0.5rem;
+        /* Tabs otimizadas */
+        .tabs {
             display: flex;
-            gap: 1.5rem;
-            justify-content: center;
-            background-color: var(--card-bg);
-            border-radius: 4px;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-color);
+        }
+
+        .tab-btn.active {
+            color: var(--text-color);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary-color);
+        }
+
+        /* Input de busca melhorado */
+        .search-container {
+            margin: 1.5rem 0;
+        }
+
+        input[type="text"] {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            width: 300px;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(255, 75, 75, 0.1);
+        }
+
+        /* Container principal */
+        .dashboard-container {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-top: 1rem;
         }
         
-        .reservation-type-selector label {
+        .dashboard-header {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 0.5rem;
-            color: #888;
+            margin-bottom: 2rem;
+        }
+        
+        .header-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .header-btn {
+            background: none;
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 4px;
             cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Tabela melhorada */
+        .dashboard-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 1rem;
+        }
+        
+        .dashboard-table th,
+        .dashboard-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .dashboard-table th {
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .dashboard-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        /* Barra de Progresso refinada */
+        .progress-cell {
+            width: 200px;
+        }
+        
+        .progress-bar {
+            background: rgba(255,255,255,0.1);
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-right: 1rem;
+            display: inline-block;
+            width: 120px;
+            vertical-align: middle;
+        }
+        
+        .progress {
+            background: var(--primary-color);
+            height: 100%;
+            transition: width 0.3s;
+        }
+        
+        .progress.complete {
+            background: var(--success-color);
+        }
+        
+        /* Botão Ver Detalhe refinado */
+        .action-btn {
+            background: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
             font-size: 0.9rem;
         }
         
-        .reservation-type-selector input[type="radio"] {
+        .action-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        /* Modal e Calendário */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+        }
+        
+        .modal-content {
+            background: var(--bg-color);
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            position: relative;
+        }
+        
+        .modal-close {
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
+            color: #888;
+            font-size: 1.5rem;
             cursor: pointer;
         }
         
-        .reservation-type-selector label:hover {
-            color: #fff;
+        /* Calendário */
+        .calendar {
+            margin-top: 1rem;
         }
         
-        .calendar-day .reservation-type {
-            font-size: 0.7rem;
-            margin-top: 0.2rem;
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .loading {
+        .calendar-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
             text-align: center;
-            padding: 20px;
-            color: #888;
+            margin-bottom: 0.5rem;
+            gap: 4px;
+        }
+        
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        
+        .calendar-day {
+            position: relative;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: var(--card-bg);
+            transition: all 0.3s;
+        }
+        
+        .calendar-day.weekend {
+            background-color: #2a2a2a;
+            cursor: not-allowed;
+        }
+        
+        .calendar-day.past {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .calendar-day.reserved {
+            background-color: var(--primary-color);
+        }
+        
+        .calendar-day.half-day {
+            background: linear-gradient(45deg, var(--primary-color) 50%, var(--card-bg) 50%);
+        }
+        
+        .tooltip {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+        }
+        
+        .calendar-day:hover .tooltip {
+            display: block;
+        }
+        
+        .day-actions {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .day-actions button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+            transition: all 0.3s;
+        }
+        
+        .day-actions button:hover {
+            background: rgba(255, 255, 255, 0.1);
         }
 
-        /* Adicionar estilos para tooltips */
+        /* Cards de Estatísticas */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-card h3 {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-trend {
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .trend-up {
+            color: var(--success-color);
+        }
+
+        .trend-down {
+            color: var(--warning-color);
+        }
+
+        /* Gráficos */
+        .charts-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-card h3 {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+        }
+
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+
+        /* Header principal */
+        .main-header {
+            background: var(--card-bg);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-header h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 500;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .header-btn {
+            background: none;
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .header-btn.secondary {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+
+        .header-btn.secondary:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        /* Container principal */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* Seção de período */
+        .period-section {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Cor do período ativo */
+        .period-btn.active {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        /* Tooltips para status do office */
         .calendar-day {
             position: relative;
         }
@@ -470,94 +549,242 @@
             border-style: solid;
             border-color: var(--bg-color) transparent transparent transparent;
         }
+
+        /* Ajuste das cores dos dias cancelados */
+        .calendar-day:not(.reserved):not(.weekend) {
+            background-color: var(--card-bg);
+        }
+
+        /* Adicionar estilos para o estado de loading e erro */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+            color: var(--text-muted);
+        }
+
+        .error {
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid var(--warning-color);
+            border-radius: 6px;
+            padding: 2rem;
+            text-align: center;
+            margin: 1rem;
+        }
+
+        .error p {
+            color: var(--warning-color);
+            margin-bottom: 1rem;
+        }
+
+        .close-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+            cursor: pointer;
+        }
+
+        .close-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Adicionar estilos para as novas funcionalidades */
+        .calendar-day.goal-reached {
+            background-color: #2ecc71 !important;
+        }
+
+        .calendar-day.half-day {
+            background: linear-gradient(135deg, var(--primary-color) 50%, var(--card-bg) 50%) !important;
+        }
+
+        .reserve-options {
+            display: flex;
+            gap: 4px;
+        }
+
+        .reserve-btn.half {
+            opacity: 0.8;
+        }
+
+        .reservation-type {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Atualizar estilo para goal-reached */
+        .calendar-day.reserved.goal-reached {
+            background-color: #27ae60 !important; /* Verde mais escuro */
+        }
+
+        .calendar-day.reserved.goal-reached.half-day {
+            background: linear-gradient(135deg, #27ae60 50%, var(--card-bg) 50%) !important;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Dashboard Administrativo</h1>
-            <div class="header-buttons">
-                <button onclick="openAdminModal()" class="admin-btn">Gerir Admins</button>
-                <a href="/" class="btn">Voltar</a>
-            </div>
-        </div>
-        
-        <!-- Atualizar os botões de período -->
-        <div class="period-selector">
-            <div class="period-buttons">
-                <button class="period-btn" data-period="previous">Mês Anterior</button>
-                <button class="period-btn active" data-period="current">Mês Atual</button>
-                <button class="period-btn" data-period="next">Próximo Mês</button>
-                <button class="period-btn" data-period="year">Anual</button>
-            </div>
-            <span id="selectedPeriod" class="period-label"></span>
-        </div>
-
-        <!-- Stats existentes com id para atualização -->
-        <div class="dashboard-stats">
-            <div class="stat-card">
-                <h3>Usuários</h3>
-                <div class="stat-value" id="statUsers">{{ stats.total_users }}</div>
-            </div>
-            <div class="stat-card">
-                <h3>Ocupação</h3>
-                <div class="stat-value" id="statOccupation">{{ stats.avg_occupation }}%</div>
-            </div>
-            <div class="stat-card">
-                <h3>Reservas</h3>
-                <div class="stat-value" id="statReservations">{{ stats.total_reservations }}</div>
-            </div>
-            <div class="stat-card">
-                <h3>Meta</h3>
-                <div class="stat-value" id="statGoal">{{ stats.goal_reached }}%</div>
-            </div>
-        </div>
-
-        <hr class="divider">
-
-        <!-- Tabela de usuários -->
-        <div class="table-container">
-            <table class="dashboard-table">
-                <thead>
-                    <tr>
-                        <th>Usuário</th>
-                        <th>Total</th>
-                        {% for i in range(3) %}
-                        <th>{{ users[0].months[i].month_name if users|length > 0 else '' }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr>
-                        <td class="email-cell">{{ user.email }}</td>
-                        <td>{{ user.year_total }}</td>
-                        {% for month in user.months[:3] %}
-                        <td>
-                            <div class="progress-cell" style="cursor: pointer;" onclick="showMonthDetail('{{ user.email }}', '{{ month.month }}')">
-                                <div class="progress-bar">
-                                    <div class="progress-fill 
-                                        {% if month.percentage >= 100 %}complete
-                                        {% elif month.percentage >= 50 %}warning{% endif %}"
-                                        style="width: {{ month.percentage if month.percentage <= 100 else 100 }}%">
-                                    </div>
-                                </div>
-                                <span class="percentage">{{ month.percentage }}%</span>
-                                <div class="month-details">
-                                    {{ month.completed }}/{{ month.required }}
-                                    ({{ month.full_days }}f, {{ month.half_days }}h)
-                                </div>
-                            </div>
-                        </td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="main-header">
+        <h1>Dashboard Administrativo</h1>
+        <div class="header-actions">
+            <a href="/admin/manage" class="header-btn">Gerir Admins</a>
+            <a href="/" class="header-btn secondary">Voltar</a>
         </div>
     </div>
 
-    <!-- Adicionar modal de gestão de admins -->
+    <div class="main-container">
+        <div class="period-section">
+            <div class="period-selector">
+                <button class="period-btn" data-period="previous">Mês Anterior</button>
+                <button class="period-btn active" data-period="current">Mês Atual</button>
+                <button class="period-btn" data-period="next">Próximo Mês</button>
+                <button class="period-btn" data-period="annual">Anual</button>
+            </div>
+            
+            <div class="current-period">
+                <h2>February 2025</h2>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="stats">Estatísticas</button>
+            <button class="tab-btn" data-tab="users">Utilizadores</button>
+            <button class="tab-btn" data-tab="teams">Equipas</button>
+        </div>
+
+        <!-- Conteúdo das tabs -->
+        <div id="statsSection" class="tab-content">
+            <div class="stats-container">
+                <div class="stat-card">
+                    <h3>Total de Usuários</h3>
+                    <div class="stat-value" id="totalUsers">{{ stats.total_users }}</div>
+                    <div class="stat-trend trend-up">
+                        <i class="fas fa-arrow-up"></i>
+                        12% este mês
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h3>Média de Dias</h3>
+                    <div class="stat-value" id="avgDays">{{ stats.avg_days }}</div>
+                    <div class="stat-trend trend-up">
+                        <i class="fas fa-arrow-up"></i>
+                        5% este mês
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h3>Meta Atingida</h3>
+                    <div class="stat-value" id="goalReached">{{ stats.goal_reached }}</div>
+                    <div class="stat-trend trend-down">
+                        <i class="fas fa-arrow-down"></i>
+                        3% este mês
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-container">
+                <div class="chart-card">
+                    <h3>Presença Mensal</h3>
+                    <div class="chart-container">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Distribuição por Equipe</h3>
+                    <div class="chart-container">
+                        <canvas id="teamChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="usersSection" class="tab-content" style="display: none;">
+            <div class="section-header">
+                <h2>Gestão de Usuários</h2>
+                <div class="search-box">
+                    <input type="text" id="userSearch" placeholder="Buscar usuário...">
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Equipa</th>
+                            <th>Contagem Dias</th>
+                            <th>Progresso</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.name }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.team }}</td>
+                            <td>{{ user.days_in_period }}/10</td>
+                            <td class="progress-cell">
+                                <div class="progress-bar">
+                                    <div class="progress" style="width: {{ user.progress }}%"></div>
+                                </div>
+                                <span>{{ user.progress }}%</span>
+                            </td>
+                            <td>
+                                <button onclick="showMonthDetail('{{ user.email }}')" class="action-btn">
+                                    Ver Detalhe
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="teamsSection" class="tab-content" style="display: none;">
+            <div class="section-header">
+                <h2>Gestão de Equipas</h2>
+                <button class="btn" onclick="showNewTeamModal()">Nova Equipa</button>
+            </div>
+            <div class="teams-grid">
+                {% for team in teams %}
+                <div class="team-card">
+                    <div class="team-header">
+                        <h3>{{ team.name }}</h3>
+                        <div class="team-actions">
+                            <button onclick="editTeam('{{ team.key.id_or_name }}')" class="icon-btn">✏️</button>
+                            <button onclick="showMandatoryDays('{{ team.key.id_or_name }}')" class="icon-btn">📅</button>
+                        </div>
+                    </div>
+                    <div class="team-info">
+                        <p><strong>Team Lead:</strong> {{ team.team_lead or 'Não definido' }}</p>
+                        <p><strong>Membros:</strong> {{ team.member_count }}</p>
+                    </div>
+                    <div class="team-mandatory-days">
+                        <strong>Dias Obrigatórios:</strong>
+                        <div class="days-chips">
+                            {% for day in team.mandatory_days[:3] %}
+                            <span class="day-chip">{{ day }}</span>
+                            {% endfor %}
+                            {% if team.mandatory_days|length > 3 %}
+                            <span class="day-chip more">+{{ team.mandatory_days|length - 3 }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
     <div id="adminModal" class="modal">
         <div class="modal-content">
             <h3>Gestão de Administradores</h3>
@@ -571,7 +798,6 @@
         </div>
     </div>
 
-    <!-- Adicionar modal de detalhes do mês -->
     <div id="monthDetailModal" class="modal">
         <div class="modal-content month-detail-content">
             <div class="modal-header">
@@ -601,7 +827,39 @@
         </div>
     </div>
 
-    <!-- Adicionar JavaScript -->
+    <div id="teamModal" class="modal">
+        <div class="modal-content">
+            <h3 id="teamModalTitle">Nova Equipa</h3>
+            <form id="teamForm" onsubmit="saveTeam(event)">
+                <input type="hidden" id="teamId">
+                <div class="form-group">
+                    <label>Nome da Equipa</label>
+                    <input type="text" id="teamName" required>
+                </div>
+                <div class="form-group">
+                    <label>Team Lead</label>
+                    <select id="teamLead">
+                        <option value="">Selecione um Team Lead</option>
+                        {% for user in users %}
+                        <option value="{{ user.email }}">{{ user.name or user.email }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="closeTeamModal()" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="calendarModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="calendarContent"></div>
+        </div>
+    </div>
+
     <script>
         const adminModal = document.getElementById('adminModal');
 
@@ -666,184 +924,512 @@
             });
         }
 
-        // Fechar modal ao clicar fora
         window.onclick = function(event) {
             if (event.target == adminModal) {
                 closeAdminModal();
             }
         }
 
-        function toggleReservation(email, date, currentlyReserved, forceAdd = false) {
-            // Mensagens de confirmação
-            if (!forceAdd) {  // Não pede confirmação quando é segunda tentativa (forceAdd)
-                const message = currentlyReserved ? 
-                    'Tem certeza que deseja cancelar esta reserva?' : 
-                    'Tem certeza que deseja fazer esta reserva?';
-                    
-                if (!confirm(message)) {
-                    return;  // Se não confirmar, não faz nada
-                }
-            }
+        function toggleReservation(email, date, currentlyReserved, type = 'full') {
+            const message = currentlyReserved ? 
+                'Tem certeza que deseja cancelar esta reserva?' : 
+                `Tem certeza que deseja fazer esta reserva de ${type === 'full' ? 'dia inteiro' : 'meio dia'}?`;
+                
+            if (!confirm(message)) return;
 
-            const resType = document.querySelector('input[name="resType"]:checked').value;
-            
-            fetch('/admin/toggle-reservation', {
+            fetch('/make-reservation', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     email: email,
                     date: date,
                     currentlyReserved: currentlyReserved,
-                    type: resType,
-                    force_add: forceAdd
+                    type: type
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.needsConfirmation && !forceAdd) {
-                    if (confirm(data.warning)) {
-                        // Refaz a requisição com force_add = true
-                        toggleReservation(email, date, currentlyReserved, true);
-                    }
-                    return;
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => Promise.reject(data.error));
                 }
-                
+                return response.json();
+            })
+            .then(data => {
                 if (data.success) {
-                    location.reload();
-                } else if (data.error) {
-                    alert(data.error);
+                    showMonthDetail(email);
+                    updatePeriod(document.querySelector('.period-btn.active').dataset.period);
+                } else {
+                    alert(data.error || 'Erro ao processar a reserva');
                 }
             })
             .catch(error => {
-                if (error && typeof error === 'string') {
-                    alert('Erro ao processar a reserva: ' + error);
+                console.error('Erro:', error);
+                alert(typeof error === 'string' ? error : 'Erro ao processar a reserva');
+            });
+        }
+
+        const modalCache = new Map();
+        
+        function showMonthDetail(email) {
+            const period = document.querySelector('.period-btn.active').dataset.period;
+            const modal = document.getElementById('calendarModal');
+            const modalContent = document.getElementById('calendarContent');
+            
+            // Mostrar loading
+            modalContent.innerHTML = '<div class="loading">Carregando...</div>';
+            modal.style.display = 'block';
+            
+            // Usando a rota correta do backend
+            fetch(`/user/calendar/${encodeURIComponent(email)}?period=${period}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao carregar dados');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const startDate = new Date(data.period.start);
+                    const calendar = generateCalendar(startDate, data.reservations, email);
+                    modalContent.innerHTML = calendar;
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    modalContent.innerHTML = `
+                        <div class="error">
+                            <p>Erro ao carregar dados: ${error.message}</p>
+                            <button onclick="closeModal()" class="close-btn">Fechar</button>
+                        </div>
+                    `;
+                });
+        }
+
+        function generateCalendar(startDate, reservations, userEmail) {
+            const month = startDate.getMonth();
+            const year = startDate.getFullYear();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            
+            // Criar mapa de reservas por data
+            const reservationMap = {};
+            reservations.forEach(res => {
+                reservationMap[res.date] = res;
+            });
+            
+            // Calcular total de dias reservados no mês considerando meio dia
+            const daysInMonth = reservations.reduce((total, r) => {
+                if (r.status === 'active') {
+                    return total + (r.type === 'full' ? 1.0 : 0.5);
+                }
+                return total;
+            }, 0);
+            
+            const goalReached = daysInMonth >= 10; // Meta de 10 dias
+            
+            let calendar = `
+                <div class="modal-close" onclick="closeModal()">×</div>
+                <h3>${startDate.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })}</h3>
+                <div class="calendar">
+                    <div class="calendar-header">
+                        <div>Dom</div>
+                        <div>Seg</div>
+                        <div>Ter</div>
+                        <div>Qua</div>
+                        <div>Qui</div>
+                        <div>Sex</div>
+                        <div>Sáb</div>
+                    </div>
+                    <div class="calendar-days">
+            `;
+            
+            // Preencher dias vazios no início
+            for (let i = 0; i < firstDay.getDay(); i++) {
+                calendar += '<div class="calendar-day empty"></div>';
+            }
+            
+            // Preencher os dias do mês
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const reservation = reservationMap[date];
+                const isWeekend = new Date(year, month, day).getDay() % 6 === 0;
+                const isPast = new Date(date) < new Date().setHours(0,0,0,0);
+                
+                let classes = ['calendar-day'];
+                if (isWeekend) classes.push('weekend');
+                if (isPast) classes.push('past');
+                if (reservation) {
+                    classes.push('reserved');
+                    if (reservation.type === 'half') classes.push('half-day');
+                    if (goalReached) classes.push('goal-reached');
+                }
+                
+                calendar += `
+                    <div class="${classes.join(' ')}" data-date="${date}">
+                        <span class="day-number">${day}</span>
+                        ${reservation ? `
+                            <span class="reservation-type">${reservation.type === 'half' ? '50%' : '100%'}</span>
+                        ` : ''}
+                        <div class="tooltip">
+                            ${isWeekend ? 'Fim de semana' : 
+                              isPast ? 'Data passada' :
+                              reservation ? `Reservado - ${reservation.type === 'half' ? 'Meio Dia' : 'Dia Inteiro'}` : 
+                              'Office livre'}
+                        </div>
+                        ${!isWeekend && !isPast ? `
+                            <div class="day-actions">
+                                ${reservation ? `
+                                    <button onclick="toggleReservation('${userEmail}', '${date}', true)" 
+                                            class="cancel-btn" 
+                                            title="Cancelar Reserva">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                ` : `
+                                    <div class="reserve-options">
+                                        <button onclick="toggleReservation('${userEmail}', '${date}', false, 'full')" 
+                                                class="reserve-btn" 
+                                                title="Reservar Dia Inteiro">
+                                            <i class="fas fa-sun"></i>
+                                        </button>
+                                        <button onclick="toggleReservation('${userEmail}', '${date}', false, 'half')" 
+                                                class="reserve-btn half" 
+                                                title="Reservar Meio Dia">
+                                            <i class="fas fa-adjust"></i>
+                                        </button>
+                                    </div>
+                                `}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            calendar += `
+                    </div>
+                </div>
+            `;
+            
+            return calendar;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('pt-PT', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        function closeMonthDetail() {
+            const modal = document.getElementById('calendarModal');
+            modal.style.display = 'none';
+        }
+
+        function updatePeriod(period) {
+            // Mostrar loading state
+            const tableBody = document.querySelector('.dashboard-table tbody');
+            if (tableBody) {
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Carregando...</td></tr>';
+            }
+
+            // Corrigido o endpoint para corresponder à rota do Flask
+            fetch(`/admin/dashboard?period=${period}`, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Erro ao carregar dados');
+                return response.json();
+            })
+            .then(data => {
+                // Atualizar título do período
+                const periodTitle = document.querySelector('.current-period h2');
+                if (periodTitle && data.period_title) {
+                    periodTitle.textContent = data.period_title;
+                }
+                
+                // Atualizar tabela de usuários
+                if (tableBody && data.users) {
+                    tableBody.innerHTML = data.users.map(user => {
+                        const progressClass = user.progress >= 100 ? 'complete' : '';
+                        const daysDisplay = period === 'annual' ? 
+                            user.days_in_period.toFixed(1) : 
+                            `${user.days_in_period.toFixed(1)}/10`;
+                        
+                        return `
+                            <tr>
+                                <td>${user.name}</td>
+                                <td>${user.email}</td>
+                                <td>${user.team}</td>
+                                <td>${daysDisplay}</td>
+                                <td class="progress-cell">
+                                    ${period !== 'annual' ? `
+                                        <div class="progress-bar">
+                                            <div class="progress ${progressClass}" 
+                                                 style="width: ${Math.min(user.progress, 100)}%"></div>
+                                        </div>
+                                        <span>${Math.min(user.progress, 100)}%</span>
+                                    ` : ''}
+                                </td>
+                                <td>
+                                    <button onclick="showMonthDetail('${user.email}')" class="action-btn">
+                                        Ver Detalhe
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                if (tableBody) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--warning-color);">
+                                Erro ao carregar dados: ${error.message}
+                            </td>
+                        </tr>
+                    `;
                 }
             });
         }
 
-        // Cache para dados dos modais
-        const modalCache = new Map();
-        
-        function showMonthDetail(email, monthKey) {
-            const modal = document.getElementById('monthDetailModal');
-            const title = document.getElementById('monthDetailTitle');
-            const calendar = document.getElementById('monthCalendarDetail');
+        function initTabs() {
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
             
-            // Mostrar loading
-            calendar.innerHTML = '<div class="loading">Carregando...</div>';
-            modal.style.display = 'block';
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    
+                    tabContents.forEach(content => content.style.display = 'none');
+                    
+                    const targetId = `${button.dataset.tab}Section`;
+                    document.getElementById(targetId).style.display = 'block';
+                    
+                    localStorage.setItem('currentTab', button.dataset.tab);
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTabs();
             
-            fetch(`/admin/month-detail?email=${encodeURIComponent(email)}&month=${monthKey}`)
+            const currentTab = localStorage.getItem('currentTab') || 'stats';
+            document.querySelector(`[data-tab="${currentTab}"]`).click();
+            
+            const currentPeriod = '{{ current_period }}';
+            document.querySelector(`[data-period="${currentPeriod}"]`).classList.add('active');
+        });
+
+        function showNewTeamModal() {
+            document.getElementById('teamModalTitle').textContent = 'Nova Equipa';
+            document.getElementById('teamId').value = '';
+            document.getElementById('teamName').value = '';
+            document.getElementById('teamLead').value = '';
+            document.getElementById('teamModal').style.display = 'block';
+        }
+
+        function closeTeamModal() {
+            document.getElementById('teamModal').style.display = 'none';
+        }
+
+        function saveTeam(event) {
+            event.preventDefault();
+            const teamId = document.getElementById('teamId').value;
+            const teamData = {
+                name: document.getElementById('teamName').value,
+                team_lead: document.getElementById('teamLead').value
+            };
+            
+            fetch(`/admin/team/${teamId ? 'update' : 'create'}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(teamData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.error);
+                }
+            });
+        }
+
+        function editTeam(teamId) {
+            fetch(`/admin/team/${teamId}`)
                 .then(response => response.json())
-                .then(data => {
-                    title.textContent = `${data.month_name} - ${email}`;
-                    
-                    let firstDay = new Date(data.days[0].date).getDay();
-                    let calendarHTML = '';
-                    let monthDays = 0;
-                    
-                    // Calcular total de dias
-                    data.days.forEach(day => {
-                        if (day.reserved) {
-                            monthDays += day.type === 'half' ? 0.5 : 1;
-                        }
-                    });
-                    
-                    // Adicionar dias vazios no início
-                    for (let i = 0; i < firstDay; i++) {
-                        calendarHTML += '<div class="calendar-day" style="visibility: hidden;"></div>';
-                    }
-                    
-                    // Renderizar dias
-                    data.days.forEach(day => {
-                        const date = new Date(day.date);
-                        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                        
-                        let classes = ['calendar-day'];
-                        if (isWeekend) classes.push('weekend');
-                        if (day.reserved) {
-                            classes.push('reserved');
-                            if (monthDays >= 10) classes.push('goal-reached');
-                        }
-                        if (day.is_full && !day.reserved) classes.push('day-full');
-                        
-                        // Determinar o texto do tooltip
-                        let tooltipText = isWeekend ? 'Fim de semana' : 
-                                         day.is_full ? 'Office cheio' : 
-                                         'Office livre';
-                        
-                        calendarHTML += `
-                            <div class="${classes.join(' ')}" 
-                                 onclick="toggleReservation('${email}', '${day.date}', ${day.reserved})"
-                                 style="cursor: pointer;">
-                                <span class="day-number">${date.getDate()}</span>
-                                ${day.reserved ? `<span class="reservation-type">${day.type === 'half' ? '50%' : '100%'}</span>` : ''}
-                                ${day.is_full ? '<span class="office-status">Office Cheio</span>' : ''}
-                                <div class="tooltip">${tooltipText}</div>
-                            </div>
-                        `;
-                    });
-                    
-                    calendar.innerHTML = calendarHTML;
+                .then(team => {
+                    document.getElementById('teamModalTitle').textContent = 'Editar Equipa';
+                    document.getElementById('teamId').value = teamId;
+                    document.getElementById('teamName').value = team.name;
+                    document.getElementById('teamLead').value = team.team_lead || '';
+                    document.getElementById('teamModal').style.display = 'block';
                 });
         }
 
-        function closeMonthDetail() {
-            document.getElementById('monthDetailModal').style.display = 'none';
+        function showMandatoryDays(teamId) {
+            // Implementar modal de dias obrigatórios
         }
 
-        // Atualizar função para trabalhar com botões
-        document.querySelectorAll('.period-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                // Remover classe active de todos os botões
-                document.querySelectorAll('.period-btn').forEach(b => 
-                    b.classList.remove('active'));
-                
-                // Adicionar classe active ao botão clicado
-                this.classList.add('active');
-                
-                // Atualizar estatísticas
-                updateStats(this.dataset.period);
+        document.getElementById('userSearch')?.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('.dashboard-table tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
             });
         });
 
-        function updateStats(period) {
-            fetch(`/admin/stats?period=${period}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        console.error('Erro:', data.error);
-                        return;
-                    }
-                    document.getElementById('statUsers').textContent = data.total_users;
-                    document.getElementById('statOccupation').textContent = data.avg_occupation + '%';
-                    document.getElementById('statReservations').textContent = data.total_reservations;
-                    document.getElementById('statGoal').textContent = data.goal_reached + '%';
-                    document.getElementById('selectedPeriod').textContent = data.period_name;
-                })
-                .catch(error => console.error('Erro ao atualizar stats:', error));
+        console.log('Usuários:', {{ users|tojson|safe }});
+
+        function closeModal() {
+            const modal = document.getElementById('calendarModal');
+            modal.style.display = 'none';
+            // Atualizar a tabela principal após fechar o modal
+            updatePeriod(document.querySelector('.period-btn.active').dataset.period);
         }
 
-        // Inicializar com o mês atual
-        document.addEventListener('DOMContentLoaded', () => 
-            updateStats('current'));
+        // Fechar modal quando clicar fora
+        window.onclick = function(event) {
+            const modal = document.getElementById('calendarModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
 
-        // Otimizar carregamento das stats
-        function loadStats() {
-            fetch('/admin/stats')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('totalUsers').textContent = data.total_users;
-                    document.getElementById('activeUsers').textContent = data.active_users;
-                    document.getElementById('avgDays').textContent = data.avg_days.toFixed(1);
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar os botões de período
+            const periodBtns = document.querySelectorAll('.period-btn');
+            periodBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    periodBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    updatePeriod(this.dataset.period);
                 });
-        }
+            });
 
-        // Carregar stats ao iniciar
-        document.addEventListener('DOMContentLoaded', loadStats);
+            // Inicializar as tabs
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tabId = this.dataset.tab;
+                    
+                    // Remover active de todas as tabs
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    // Ativar a tab clicada
+                    this.classList.add('active');
+                    document.querySelector(`.tab-content[data-tab="${tabId}"]`).classList.add('active');
+                    
+                    // Se for a tab de estatísticas, inicializar os gráficos
+                    if (tabId === 'stats') {
+                        initializeCharts();
+                    }
+                });
+            });
+
+            // Inicializar os gráficos se a tab de stats estiver ativa
+            const activeTab = document.querySelector('.tab-btn.active');
+            if (activeTab && activeTab.dataset.tab === 'stats') {
+                initializeCharts();
+            }
+        });
+
+        function initializeCharts() {
+            // Verificar se os elementos existem antes de inicializar
+            const monthlyChart = document.getElementById('monthlyChart');
+            const teamChart = document.getElementById('teamChart');
+
+            if (monthlyChart) {
+                const monthlyCtx = monthlyChart.getContext('2d');
+                new Chart(monthlyCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+                        datasets: [{
+                            label: 'Dias de Presença',
+                            data: [8, 12, 9, 11, 10, 13],
+                            borderColor: 'rgb(255, 75, 75)',
+                            tension: 0.4,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#888'
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: '#888'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            if (teamChart) {
+                const teamCtx = teamChart.getContext('2d');
+                new Chart(teamCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Dev', 'Design', 'Marketing', 'Outros'],
+                        datasets: [{
+                            data: [12, 8, 5, 3],
+                            backgroundColor: [
+                                'rgb(255, 75, 75)',
+                                'rgb(75, 192, 192)',
+                                'rgb(255, 205, 86)',
+                                'rgb(153, 102, 255)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#888'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
     </script>
 </body>
 </html> 
