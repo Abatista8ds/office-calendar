@@ -276,11 +276,16 @@
         
         .modal-close {
             position: absolute;
-            right: 1rem;
-            top: 1rem;
-            color: #888;
-            font-size: 1.5rem;
+            right: 20px;
+            top: 20px;
+            font-size: 28px;
+            font-weight: bold;
             cursor: pointer;
+            color: var(--text-muted);
+        }
+        
+        .modal-close:hover {
+            color: var(--text-color);
         }
         
         /* Calendário */
@@ -824,10 +829,13 @@
         </div>
     </div>
 
+    <!-- Modal do Calendário -->
     <div id="calendarModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <div id="calendarContent"></div>
+            <span class="modal-close" onclick="closeMonthDetail()">&times;</span>
+            <div id="calendarContent">
+                <!-- Conteúdo será inserido aqui -->
+            </div>
         </div>
     </div>
 
@@ -998,7 +1006,6 @@
             const goalReached = daysInMonth >= 10; // Meta de 10 dias
             
             let calendar = `
-                <div class="modal-close" onclick="closeModal()">×</div>
                 <h3>${startDate.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })}</h3>
                 <div class="calendar">
                     <div class="calendar-header">
@@ -1095,6 +1102,8 @@
         function closeMonthDetail() {
             const modal = document.getElementById('calendarModal');
             modal.style.display = 'none';
+            // Atualizar a tabela principal após fechar o modal
+            updatePeriod(document.querySelector('.period-btn.active').dataset.period);
         }
 
         function updatePeriod(period) {
