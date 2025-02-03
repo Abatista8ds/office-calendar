@@ -647,6 +647,52 @@
             gap: 1.5rem;
             margin-top: 2rem;
         }
+
+        .search-container {
+            margin-bottom: 20px;
+            position: relative;
+            max-width: 300px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 32px 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            font-size: 14px;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .btn-primary, .btn-danger {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: opacity 0.2s;
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+        }
+
+        .btn-danger {
+            background-color: var(--warning-color);
+        }
+
+        .btn-primary:hover, .btn-danger:hover {
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
@@ -673,117 +719,142 @@
         </div>
 
         <div class="tabs">
-            <button class="tab-btn" data-tab="stats">Estatísticas</button>
-            <button class="tab-btn" data-tab="users">Utilizadores</button>
-            <button class="tab-btn" data-tab="teams">Equipas</button>
+            <button class="tab-btn active" data-tab="overview">
+                <i class="fas fa-chart-bar"></i>
+                Visão Geral
+            </button>
+            <button class="tab-btn" data-tab="users">
+                <i class="fas fa-user"></i>
+                Utilizadores
+            </button>
+            <button class="tab-btn" data-tab="teams">
+                <i class="fas fa-users"></i>
+                Equipes
+            </button>
+            <button class="tab-btn" data-tab="admins">
+                <i class="fas fa-user-shield"></i>
+                Gerir Admins
+            </button>
         </div>
 
-        <!-- Conteúdo das tabs -->
-        <div class="tab-content" data-tab="stats">
-            <div class="stats-container">
-                <div class="stat-card">
-                    <h3>Total de Usuários</h3>
-                    <div class="stat-value" id="totalUsers">{{ stats.total_users }}</div>
-                    <div class="stat-trend trend-up">
-                        <i class="fas fa-arrow-up"></i>
-                        12% este mês
+        <!-- Primeiro, garantir que os conteúdos das tabs existam -->
+        <div class="tab-contents">
+            <!-- Tab Visão Geral -->
+            <div class="tab-content active" data-tab="overview">
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <h3>Total de Usuários</h3>
+                        <div class="stat-value" id="totalUsers">{{ stats.total_users }}</div>
+                        <div class="stat-trend trend-up">
+                            <i class="fas fa-arrow-up"></i>
+                            12% este mês
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Média de Dias</h3>
+                        <div class="stat-value" id="avgDays">{{ stats.avg_days }}</div>
+                        <div class="stat-trend trend-up">
+                            <i class="fas fa-arrow-up"></i>
+                            5% este mês
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Meta Atingida</h3>
+                        <div class="stat-value" id="goalReached">{{ stats.goal_reached }}</div>
+                        <div class="stat-trend trend-down">
+                            <i class="fas fa-arrow-down"></i>
+                            3% este mês
+                        </div>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <h3>Média de Dias</h3>
-                    <div class="stat-value" id="avgDays">{{ stats.avg_days }}</div>
-                    <div class="stat-trend trend-up">
-                        <i class="fas fa-arrow-up"></i>
-                        5% este mês
+
+                <div class="charts-container">
+                    <div class="chart-card">
+                        <h3>Presença Mensal</h3>
+                        <div class="chart-container">
+                            <canvas id="monthlyChart"></canvas>
+                        </div>
                     </div>
-                </div>
-                <div class="stat-card">
-                    <h3>Meta Atingida</h3>
-                    <div class="stat-value" id="goalReached">{{ stats.goal_reached }}</div>
-                    <div class="stat-trend trend-down">
-                        <i class="fas fa-arrow-down"></i>
-                        3% este mês
+                    <div class="chart-card">
+                        <h3>Distribuição por Equipe</h3>
+                        <div class="chart-container">
+                            <canvas id="teamChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="charts-container">
-                <div class="chart-card">
-                    <h3>Presença Mensal</h3>
-                    <div class="chart-container">
-                        <canvas id="monthlyChart"></canvas>
+            <!-- Tab Utilizadores -->
+            <div class="tab-content" data-tab="users">
+                <div class="users-section">
+                    <h2>Gestão de Utilizadores</h2>
+                    <div class="search-container">
+                        <input type="text" id="userSearch" class="search-input" placeholder="Pesquisar utilizadores...">
+                        <i class="fas fa-search search-icon"></i>
+                    </div>
+                    <div class="users-table-container">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                    <th>Equipe</th>
+                                    <th>Dias</th>
+                                    <th>Progresso</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <!-- Será preenchido via JavaScript -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div class="chart-card">
-                    <h3>Distribuição por Equipe</h3>
-                    <div class="chart-container">
-                        <canvas id="teamChart"></canvas>
+            </div>
+
+            <!-- Tab Teams -->
+            <div class="tab-content" data-tab="teams">
+                <!-- Seção de ações -->
+                <div class="actions-section">
+                    <button class="btn-primary" onclick="openCreateTeamModal()">
+                        <i class="fas fa-plus"></i> Nova Equipa
+                    </button>
+                </div>
+
+                <!-- Grid de equipas -->
+                <div class="teams-grid">
+                    <!-- Cards de equipa serão injetados aqui via JavaScript -->
+                </div>
+
+                <!-- Incluir o modal como componente -->
+                {% include 'components/team_modal.html' %}
+            </div>
+
+            <!-- Tab Gerir Admins -->
+            <div class="tab-content" data-tab="admins">
+                <div class="admin-section">
+                    <h2>Gestão de Administradores</h2>
+                    <div class="search-container">
+                        <input type="text" id="adminSearch" class="search-input" placeholder="Pesquisar administradores...">
+                        <i class="fas fa-search search-icon"></i>
+                    </div>
+                    <div class="admin-table-container">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Nome</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminTableBody">
+                                <!-- Será preenchido via JavaScript -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="tab-content" data-tab="users">
-            <div class="section-header">
-                <h2>Gestão de Usuários</h2>
-                <div class="search-box">
-                    <input type="text" id="userSearch" placeholder="Buscar usuário...">
-                </div>
-            </div>
-            
-            <div class="table-container">
-                <table class="dashboard-table">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Email</th>
-                            <th>Equipa</th>
-                            <th>Contagem Dias</th>
-                            <th>Progresso</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user in users %}
-                        <tr>
-                            <td>{{ user.name }}</td>
-                            <td>{{ user.email }}</td>
-                            <td>{{ user.team }}</td>
-                            <td>{{ user.days_in_period }}/10</td>
-                            <td class="progress-cell">
-                                <div class="progress-bar">
-                                    <div class="progress" style="width: {{ user.progress }}%"></div>
-                                </div>
-                                <span>{{ user.progress }}%</span>
-                            </td>
-                            <td>
-                                <button onclick="showMonthDetail('{{ user.email }}')" class="action-btn">
-                                    Ver Detalhe
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Conteúdo da tab Equipas -->
-        <div class="tab-content" data-tab="teams">
-            <!-- Seção de ações -->
-            <div class="actions-section">
-                <button class="btn-primary" onclick="openCreateTeamModal()">
-                    <i class="fas fa-plus"></i> Nova Equipa
-                </button>
-            </div>
-
-            <!-- Grid de equipas -->
-            <div class="teams-grid">
-                <!-- Cards de equipa serão injetados aqui via JavaScript -->
-            </div>
-
-            <!-- Incluir o modal como componente -->
-            {% include 'components/team_modal.html' %}
         </div>
     </div>
 
@@ -1216,7 +1287,7 @@
             initTabs();
             
             // Mostrar a tab inicial (stats por padrão)
-            const defaultTab = document.querySelector('.tab-btn[data-tab="stats"]');
+            const defaultTab = document.querySelector('.tab-btn[data-tab="overview"]');
             if (defaultTab) {
                 defaultTab.click();
             }
@@ -1275,7 +1346,7 @@
             // Implementar modal de dias obrigatórios
         }
 
-        document.getElementById('userSearch')?.addEventListener('input', function(e) {
+        document.getElementById('userSearch').addEventListener('input', function(e) {
             const searchTerm = e.target.value.toLowerCase();
             const rows = document.querySelectorAll('.dashboard-table tbody tr');
             
@@ -1303,16 +1374,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Inicializar os botões de período
-            const periodBtns = document.querySelectorAll('.period-btn');
-            periodBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    periodBtns.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    updatePeriod(this.dataset.period);
-                });
-            });
-
             // Inicializar as tabs
             const tabBtns = document.querySelectorAll('.tab-btn');
             const tabContents = document.querySelectorAll('.tab-content');
@@ -1323,23 +1384,44 @@
                     
                     // Remover active de todas as tabs
                     tabBtns.forEach(b => b.classList.remove('active'));
-                    tabContents.forEach(c => c.classList.remove('active'));
+                    tabContents.forEach(c => c.style.display = 'none');
                     
                     // Ativar a tab clicada
                     this.classList.add('active');
-                    document.querySelector(`.tab-content[data-tab="${tabId}"]`).classList.add('active');
+                    const targetContent = document.querySelector(`.tab-content[data-tab="${tabId}"]`);
+                    if (targetContent) {
+                        targetContent.style.display = 'block';
+                    }
                     
-                    // Se for a tab de estatísticas, inicializar os gráficos
-                    if (tabId === 'stats') {
-                        initializeCharts();
+                    // Carregar dados específicos da tab
+                    if (tabId === 'users') {
+                        updatePeriod(document.querySelector('.period-btn.active').dataset.period);
+                    } else if (tabId === 'admins') {
+                        loadAdminTab();
+                    } else if (tabId === 'teams') {
+                        loadTeams();
                     }
                 });
             });
 
-            // Inicializar os gráficos se a tab de stats estiver ativa
-            const activeTab = document.querySelector('.tab-btn.active');
-            if (activeTab && activeTab.dataset.tab === 'stats') {
-                initializeCharts();
+            // Inicializar os botões de período
+            const periodBtns = document.querySelectorAll('.period-btn');
+            periodBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    periodBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    updatePeriod(this.dataset.period);
+                });
+            });
+
+            // Carregar dados iniciais
+            const defaultPeriod = document.querySelector('.period-btn.active')?.dataset.period || 'monthly';
+            updatePeriod(defaultPeriod);
+
+            // Mostrar a tab inicial (overview por padrão)
+            const defaultTab = document.querySelector('.tab-btn[data-tab="overview"]');
+            if (defaultTab) {
+                defaultTab.click();
             }
         });
 
@@ -1424,6 +1506,187 @@
                 });
             }
         }
+
+        function loadUsersTab() {
+            const period = document.querySelector('.period-btn.active')?.dataset.period || 'monthly';
+            fetch(`/admin/dashboard?period=${period}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('usersTableBody');
+                    if (!tableBody) return;
+                    
+                    tableBody.innerHTML = '';
+                    if (data.users) {
+                        data.users.forEach(user => {
+                            const progressClass = user.progress >= 100 ? 'complete' : '';
+                            const daysDisplay = period === 'annual' ? 
+                                user.days_in_period.toFixed(1) : 
+                                `${user.days_in_period.toFixed(1)}/10`;
+                            
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${user.name}</td>
+                                <td>${user.email}</td>
+                                <td>${user.team}</td>
+                                <td>${daysDisplay}</td>
+                                <td class="progress-cell">
+                                    ${period !== 'annual' ? `
+                                        <div class="progress-bar">
+                                            <div class="progress ${progressClass}" 
+                                                 style="width: ${Math.min(user.progress, 100)}%"></div>
+                                        </div>
+                                        <span>${Math.min(user.progress, 100)}%</span>
+                                    ` : ''}
+                                </td>
+                                <td>
+                                    <button onclick="showMonthDetail('${user.email}')" class="action-btn">
+                                        Ver Detalhe
+                                    </button>
+                                </td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    }
+                })
+                .catch(error => console.error('Erro ao carregar usuários:', error));
+        }
+
+        function loadAdminTab() {
+            fetch('/admin/users')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao carregar administradores');
+                    }
+                    return response.json();
+                })
+                .then(users => {
+                    const tableBody = document.getElementById('adminTableBody');
+                    if (!tableBody) return;
+                    
+                    tableBody.innerHTML = '';
+                    users.forEach(user => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${user.email}</td>
+                            <td>${user.name}</td>
+                            <td>${user.is_admin ? 'Administrador' : 'Usuário'}</td>
+                            <td>
+                                ${user.is_admin ? 
+                                    `<button class="btn btn-danger" onclick="toggleAdmin('${user.email}', false)">Remover Admin</button>` :
+                                    `<button class="btn btn-primary" onclick="toggleAdmin('${user.email}', true)">Tornar Admin</button>`
+                                }
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar administradores:', error);
+                    const tableBody = document.getElementById('adminTableBody');
+                    if (tableBody) {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: red;">
+                                    Erro ao carregar dados: ${error.message}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+        }
+
+        function toggleAdmin(email, makeAdmin) {
+            if (!confirm(`Confirma ${makeAdmin ? 'tornar administrador' : 'remover privilégios de administrador'} deste usuário?`)) {
+                return;
+            }
+
+            fetch('/admin/toggle_admin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, make_admin: makeAdmin })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadAdminTab();
+                } else {
+                    alert(data.error || 'Erro ao atualizar privilégios');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao atualizar privilégios');
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Carregar dados iniciais da tab ativa
+            const activeTab = document.querySelector('.tab-content.active');
+            if (activeTab) {
+                const tabName = activeTab.dataset.tab;
+                if (tabName === 'users') {
+                    loadUsersTab();
+                } else if (tabName === 'admins') {
+                    loadAdminTab();
+                } else if (tabName === 'teams') {
+                    loadTeams();
+                }
+            }
+
+            // Carregar dados da tab 'users' por padrão
+            loadUsersTab();
+        });
+
+        // Função de busca para admins (atualizada)
+        function initializeSearchBars() {
+            // Busca para usuários (mantida como está)
+            const userSearch = document.getElementById('userSearch');
+            if (userSearch) {
+                userSearch.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const rows = document.querySelectorAll('#usersTableBody tr');
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        row.style.display = text.includes(searchTerm) ? '' : 'none';
+                    });
+                });
+            }
+
+            // Busca para admins (corrigida)
+            const adminSearch = document.getElementById('adminSearch');
+            if (adminSearch) {
+                adminSearch.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const rows = document.querySelectorAll('#adminTableBody tr');
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        row.style.display = text.includes(searchTerm) ? '' : 'none';
+                    });
+                });
+            }
+        }
+
+        // Adicionar a inicialização das buscas quando uma tab é clicada
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                // ... código existente da tab ...
+                
+                // Inicializar as buscas após carregar a tab
+                setTimeout(initializeSearchBars, 100);
+            });
+        });
+
+        // Inicializar as buscas quando a página carrega
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... código existente ...
+            
+            // Inicializar as buscas
+            initializeSearchBars();
+        });
     </script>
     <script src="{{ url_for('static', filename='js/teams.js') }}"></script>
     <script>
