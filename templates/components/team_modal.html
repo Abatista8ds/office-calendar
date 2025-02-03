@@ -1,0 +1,58 @@
+<!-- Modal de Equipe -->
+<div id="teamModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Nova Equipa</h2>
+            <button class="close-btn" onclick="closeTeamModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="teamForm" onsubmit="handleTeamSubmit(event)">
+            <input type="hidden" id="teamId" name="teamId">
+            
+            <div class="form-group">
+                <label for="teamName">Nome da Equipa</label>
+                <input type="text" id="teamName" name="name" required
+                       placeholder="Ex: Desenvolvimento, Design, Marketing">
+            </div>
+
+            <div class="form-group">
+                <label for="mandatoryDay">Dia Obrigatório</label>
+                <select id="mandatoryDay" name="mandatory_day" required>
+                    <option value="">Selecione um dia</option>
+                    <option value="1">Segunda-feira</option>
+                    <option value="2">Terça-feira</option>
+                    <option value="3">Quarta-feira</option>
+                    <option value="4">Quinta-feira</option>
+                    <option value="5">Sexta-feira</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="teamLead">Team Lead</label>
+                <select id="teamLead" name="team_lead" required>
+                    <option value="">Selecione um líder</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Membros da Equipa</label>
+                <div class="members-container">
+                    <div id="teamMembers" class="member-list">
+                        <!-- Checkboxes serão inseridos aqui via JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeTeamModal()">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn-primary">
+                    <span id="submitButtonText">Criar Equipa</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

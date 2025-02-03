@@ -5,6 +5,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/teams.css') }}">
     <style>
         /* Fonte Montserrat */
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap');
@@ -628,6 +629,19 @@
         .calendar-day.reserved.goal-reached.half-day {
             background: linear-gradient(135deg, #27ae60 50%, var(--card-bg) 50%) !important;
         }
+
+        /* Ajustar para funcionar dentro da tab */
+        .tab-content[data-tab="teams"] {
+            padding: 1.5rem;
+        }
+
+        /* Resto dos estilos permanecem iguais */
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
     </style>
 </head>
 <body>
@@ -654,13 +668,13 @@
         </div>
 
         <div class="tabs">
-            <button class="tab-btn active" data-tab="stats">Estatísticas</button>
+            <button class="tab-btn" data-tab="stats">Estatísticas</button>
             <button class="tab-btn" data-tab="users">Utilizadores</button>
             <button class="tab-btn" data-tab="teams">Equipas</button>
         </div>
 
         <!-- Conteúdo das tabs -->
-        <div id="statsSection" class="tab-content">
+        <div class="tab-content" data-tab="stats">
             <div class="stats-container">
                 <div class="stat-card">
                     <h3>Total de Usuários</h3>
@@ -704,7 +718,7 @@
             </div>
         </div>
 
-        <div id="usersSection" class="tab-content" style="display: none;">
+        <div class="tab-content" data-tab="users">
             <div class="section-header">
                 <h2>Gestão de Usuários</h2>
                 <div class="search-box">
@@ -749,39 +763,22 @@
             </div>
         </div>
 
-        <div id="teamsSection" class="tab-content" style="display: none;">
-            <div class="section-header">
-                <h2>Gestão de Equipas</h2>
-                <button class="btn" onclick="showNewTeamModal()">Nova Equipa</button>
+        <!-- Conteúdo da tab Equipas -->
+        <div class="tab-content" data-tab="teams">
+            <!-- Seção de ações -->
+            <div class="actions-section">
+                <button class="btn-primary" onclick="openCreateTeamModal()">
+                    <i class="fas fa-plus"></i> Nova Equipa
+                </button>
             </div>
+
+            <!-- Grid de equipas -->
             <div class="teams-grid">
-                {% for team in teams %}
-                <div class="team-card">
-                    <div class="team-header">
-                        <h3>{{ team.name }}</h3>
-                        <div class="team-actions">
-                            <button onclick="editTeam('{{ team.key.id_or_name }}')" class="icon-btn">✏️</button>
-                            <button onclick="showMandatoryDays('{{ team.key.id_or_name }}')" class="icon-btn">📅</button>
-                        </div>
-                    </div>
-                    <div class="team-info">
-                        <p><strong>Team Lead:</strong> {{ team.team_lead or 'Não definido' }}</p>
-                        <p><strong>Membros:</strong> {{ team.member_count }}</p>
-                    </div>
-                    <div class="team-mandatory-days">
-                        <strong>Dias Obrigatórios:</strong>
-                        <div class="days-chips">
-                            {% for day in team.mandatory_days[:3] %}
-                            <span class="day-chip">{{ day }}</span>
-                            {% endfor %}
-                            {% if team.mandatory_days|length > 3 %}
-                            <span class="day-chip more">+{{ team.mandatory_days|length - 3 }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
+                <!-- Cards de equipa serão injetados aqui via JavaScript -->
             </div>
+
+            <!-- Incluir o modal como componente -->
+            {% include 'components/team_modal.html' %}
         </div>
     </div>
 
@@ -824,32 +821,6 @@
                 <div>Sáb</div>
             </div>
             <div class="month-calendar" id="monthCalendarDetail"></div>
-        </div>
-    </div>
-
-    <div id="teamModal" class="modal">
-        <div class="modal-content">
-            <h3 id="teamModalTitle">Nova Equipa</h3>
-            <form id="teamForm" onsubmit="saveTeam(event)">
-                <input type="hidden" id="teamId">
-                <div class="form-group">
-                    <label>Nome da Equipa</label>
-                    <input type="text" id="teamName" required>
-                </div>
-                <div class="form-group">
-                    <label>Team Lead</label>
-                    <select id="teamLead">
-                        <option value="">Selecione um Team Lead</option>
-                        {% for user in users %}
-                        <option value="{{ user.email }}">{{ user.name or user.email }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-actions">
-                    <button type="button" onclick="closeTeamModal()" class="btn-secondary">Cancelar</button>
-                    <button type="submit" class="btn-primary">Salvar</button>
-                </div>
-            </form>
         </div>
     </div>
 
@@ -1205,27 +1176,41 @@
             
             tabButtons.forEach(button => {
                 button.addEventListener('click', () => {
+                    // Remover active de todos os botões
                     tabButtons.forEach(btn => btn.classList.remove('active'));
                     button.classList.add('active');
                     
-                    tabContents.forEach(content => content.style.display = 'none');
+                    // Esconder todos os conteúdos
+                    tabContents.forEach(content => {
+                        if (content) {  // Verificar se o elemento existe
+                            content.style.display = 'none';
+                        }
+                    });
                     
-                    const targetId = `${button.dataset.tab}Section`;
-                    document.getElementById(targetId).style.display = 'block';
-                    
-                    localStorage.setItem('currentTab', button.dataset.tab);
+                    // Mostrar o conteúdo da tab selecionada
+                    const tabName = button.getAttribute('data-tab');
+                    const targetContent = document.querySelector(`.tab-content[data-tab="${tabName}"]`);
+                    if (targetContent) {  // Verificar se o elemento existe
+                        targetContent.style.display = 'block';
+                        
+                        // Se for a tab de equipes, carregar os dados
+                        if (tabName === 'teams') {
+                            loadTeams();
+                        }
+                    }
                 });
             });
         }
 
+        // Inicializar quando o DOM estiver pronto
         document.addEventListener('DOMContentLoaded', () => {
             initTabs();
             
-            const currentTab = localStorage.getItem('currentTab') || 'stats';
-            document.querySelector(`[data-tab="${currentTab}"]`).click();
-            
-            const currentPeriod = '{{ current_period }}';
-            document.querySelector(`[data-period="${currentPeriod}"]`).classList.add('active');
+            // Mostrar a tab inicial (stats por padrão)
+            const defaultTab = document.querySelector('.tab-btn[data-tab="stats"]');
+            if (defaultTab) {
+                defaultTab.click();
+            }
         });
 
         function showNewTeamModal() {
@@ -1430,6 +1415,25 @@
                 });
             }
         }
+    </script>
+    <script src="{{ url_for('static', filename='js/teams.js') }}"></script>
+    <script>
+        // Garantir que as tabs funcionem
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar a tab de equipes se estiver ativa
+            const teamsTab = document.querySelector('.tab-content[data-tab="teams"]');
+            if (teamsTab && teamsTab.classList.contains('active')) {
+                loadTeams();
+            }
+            
+            // Adicionar listener para carregar equipes quando a tab for selecionada
+            const teamTabBtn = document.querySelector('.tab-btn[data-tab="teams"]');
+            if (teamTabBtn) {
+                teamTabBtn.addEventListener('click', function() {
+                    loadTeams();
+                });
+            }
+        });
     </script>
 </body>
 </html> 

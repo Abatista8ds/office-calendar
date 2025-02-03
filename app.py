@@ -18,11 +18,27 @@ from dateutil.relativedelta import relativedelta
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user' not in session:
-            return jsonify({'error': 'Não autorizado'}), 401
-        if session['user']['email'] not in get_admin_emails():
-            return jsonify({'error': 'Acesso restrito a administradores'}), 403
-        return f(*args, **kwargs)
+        try:
+            if 'user' not in session:
+                print("Usuário não está na sessão")  # Debug
+                return jsonify({'error': 'Não autorizado'}), 401
+                
+            user_email = session['user']['email']
+            print(f"Email do usuário: {user_email}")  # Debug
+            
+            admin_emails = get_admin_emails()
+            print(f"Emails admin: {admin_emails}")  # Debug
+            
+            if user_email not in admin_emails:
+                print("Usuário não é admin")  # Debug
+                return jsonify({'error': 'Acesso restrito a administradores'}), 403
+                
+            return f(*args, **kwargs)
+            
+        except Exception as e:
+            print(f"Erro no decorator admin_required: {str(e)}")  # Debug
+            return jsonify({'error': 'Erro de autorização'}), 500
+            
     return decorated_function
 
 # Definir o dicionário meses no escopo global
@@ -963,7 +979,7 @@ def calculate_stats(period='current'):
         # Calcular ocupação
         working_days = sum(1 for date in (start_date + timedelta(n) 
                           for n in range((end_date - start_date).days + 1))
-                          if date.weekday() < 5)
+                          if date.weekday() < 5)  # Apenas dias úteis (0-4 = seg-sex)
         
         avg_occupation = round(
             (total_reservations / (working_days * max(total_users, 1))) * 100, 1
@@ -1183,77 +1199,74 @@ def get_user_data(email):
 
 @app.route('/admin/teams')
 @admin_required
-def admin_teams():
-    # Buscar todas as equipas
-    query = client.query(kind='Team')
-    teams = list(query.fetch())
-    
-    # Buscar todos os usuários
-    query = client.query(kind='User')
-    users = list(query.fetch())
-    
-    return render_template(
-        'admin_teams.html',
-        teams=teams,
-        users=users
-    )
-
-@app.route('/admin/team/create', methods=['POST'])
-@admin_required
-def create_team():
+def list_teams():
     try:
-        name = request.form.get('name')
-        team_lead = request.form.get('team_lead')
+        print("Iniciando listagem de equipes...")  # Log inicial
         
-        team_key = client.key('Team')
-        team = datastore.Entity(key=team_key)
-        team.update({
-            'name': name,
-            'team_lead': team_lead,
-            'mandatory_days': [],
-            'created_at': datetime.datetime.now()
-        })
-        client.put(team)
+        query = client.query(kind='Team')
+        query.add_filter('status', '=', 'active')
+        teams = list(query.fetch())
+        print(f"Equipes encontradas: {len(teams)}")  # Log das equipes
         
-        return jsonify({'success': True})
+        # Buscar informações dos usuários para os team leads
+        user_query = client.query(kind='User')
+        users = list(user_query.fetch())
+        print(f"Usuários encontrados: {len(users)}")  # Log dos usuários
+        
+        users_dict = {user['email']: user.get('name', 'Nome não definido') for user in users}
+        
+        teams_data = []
+        for team in teams:
+            try:
+                team_lead = team.get('team_lead', '')
+                team_lead_name = users_dict.get(team_lead, 'Não definido')
+                
+                team_data = {
+                    'id': team.key.id,
+                    'name': team.get('name', 'Sem nome'),
+                    'team_lead': team_lead,
+                    'team_lead_name': team_lead_name,
+                    'members': team.get('members', []),
+                    'member_count': len(team.get('members', [])),
+                    'mandatory_day': team.get('mandatory_day', 1),
+                    'created_at': team.get('created_at', datetime.now()).isoformat()
+                }
+                teams_data.append(team_data)
+                print(f"Equipe processada: {team_data['name']}")  # Log de cada equipe
+                
+            except Exception as team_error:
+                print(f"Erro ao processar equipe: {str(team_error)}")
+                continue
+        
+        print("Retornando dados das equipes...")  # Log final
+        return jsonify(teams_data)
+        
     except Exception as e:
-        return jsonify({'error': str(e)})
+        print(f"Erro ao listar equipes: {str(e)}")  # Log de erro
+        import traceback
+        print(traceback.format_exc())  # Stack trace completo
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/admin/team/<team_id>')
-@admin_required
-def get_team(team_id):
-    team_key = client.key('Team', team_id)
-    team = client.get(team_key)
-    if not team:
-        return jsonify({'error': 'Equipa não encontrada'}), 404
-    return jsonify(team)
-
-@app.route('/admin/team/update', methods=['POST'])
-@admin_required
-def update_team():
+def update_user_teams(user_emails, team_id):
+    """Atualiza o campo team dos usuários"""
     try:
-        data = request.get_json()
-        team_id = data.get('id')
-        team_key = client.key('Team', team_id)
-        team = client.get(team_key)
-        
-        if not team:
-            return jsonify({'error': 'Equipa não encontrada'}), 404
+        print(f"Atualizando equipe para usuários: {user_emails}")
+        for email in user_emails:
+            query = client.query(kind='User')
+            query.add_filter('email', '=', email)
+            users = list(query.fetch(limit=1))
             
-        team.update({
-            'name': data.get('name'),
-            'team_lead': data.get('team_lead'),
-            'updated_at': datetime.datetime.now()
-        })
-        client.put(team)
-        
-        return jsonify({'success': True})
+            if users:
+                user = users[0]
+                user['team'] = str(team_id)  # Convertendo para string para garantir consistência
+                print(f"Atualizando usuário {email} para equipe {team_id}")
+                client.put(user)
+            else:
+                print(f"Usuário não encontrado: {email}")
+                
     except Exception as e:
-        return jsonify({'error': str(e)})
-
-def count_user_days(reservations):
-    """Conta os dias de reserva de um usuário"""
-    return sum(1 if r['type'] == 'full' else 0.5 for r in reservations)
+        print(f"Erro ao atualizar equipes dos usuários: {str(e)}")
+        raise
 
 @app.route('/debug/users')
 @admin_required
@@ -1369,6 +1382,93 @@ def user_calendar(email):
         
     except Exception as e:
         print(f"Erro ao buscar calendário: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/team/<int:team_id>/history')
+@admin_required
+def team_history(team_id):
+    try:
+        team_key = client.key('Team', team_id)
+        team = client.get(team_key)
+        
+        if not team:
+            return jsonify({'error': 'Equipe não encontrada'}), 404
+            
+        history = team.get('mandatory_day_history', [])
+        
+        # Ordenar por data mais recente
+        history.sort(key=lambda x: x['changed_at'], reverse=True)
+        
+        return jsonify(history)
+        
+    except Exception as e:
+        print(f"Erro ao buscar histórico: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/users')
+@admin_required
+def list_users():
+    try:
+        query = client.query(kind='User')
+        users = list(query.fetch())
+        
+        users_data = [{
+            'email': user.get('email'),
+            'name': user.get('name', user.get('email').split('@')[0]),
+            'team': user.get('team', 'default-team'),
+            'is_admin': user.get('is_admin', False)
+        } for user in users]
+        
+        return jsonify(users_data)
+        
+    except Exception as e:
+        print(f"Erro ao listar usuários: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/team/create', methods=['POST'])
+@admin_required
+def create_team():
+    try:
+        data = request.get_json()
+        
+        # Validar dados obrigatórios
+        required_fields = ['name', 'team_lead', 'mandatory_day', 'members']
+        if not all(field in data for field in required_fields):
+            return jsonify({'error': 'Dados incompletos'}), 400
+            
+        # Criar nova equipe
+        team_key = client.key('Team')
+        team = datastore.Entity(key=team_key)
+        
+        team.update({
+            'name': data['name'],
+            'team_lead': data['team_lead'],
+            'mandatory_day': int(data['mandatory_day']),
+            'members': data['members'],
+            'created_at': datetime.now(),
+            'updated_at': datetime.now(),
+            'status': 'active',
+            'mandatory_day_history': [{
+                'day': int(data['mandatory_day']),
+                'changed_at': datetime.now().isoformat(),
+                'changed_by': session['user']['email']
+            }]
+        })
+        
+        client.put(team)
+        
+        # Atualizar usuários com a nova equipe
+        update_user_teams(data['members'], team.key.id)
+        
+        return jsonify({
+            'message': 'Equipe criada com sucesso',
+            'id': team.key.id
+        })
+        
+    except Exception as e:
+        print(f"Erro ao criar equipe: {str(e)}")
+        import traceback
+        print(traceback.format_exc())  # Adicionado para melhor debug
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
