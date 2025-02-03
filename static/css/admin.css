@@ -1,0 +1,86 @@
+.admin-manage-container {
+    padding: 2rem;
+}
+
+.header {
+    margin-bottom: 2rem;
+}
+
+.header h1 {
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    color: var(--text-muted);
+}
+
+.users-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.user-card {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.user-info h3 {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.user-info .email {
+    color: var(--text-muted);
+    margin: 0.5rem 0;
+}
+
+.user-info .status {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    background: var(--bg-color);
+    color: var(--text-muted);
+}
+
+.user-info .status.admin {
+    background: var(--primary-color);
+    color: white;
+}
+
+.actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-primary,
+.btn-warning {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-warning {
+    background: var(--warning-color);
+    color: white;
+}
+
+.btn-primary:hover,
+.btn-warning:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+} 
